@@ -1,13 +1,13 @@
 {
   "project": "mattress-ux（床垫选品方案小程序 V2.0）",
   "last_updated": "2026-11-05",
-  "current_focus": "NG-01 已提交待 Hermes 复跑验收；验收通过后派 BE-02（DB_SCHEMA+8 业务模型）；MP-02~06 等 jp/ 参考图确认",
+  "current_focus": "NG-01 已验收通过（Evaluator=Hermes）；下一步派 BE-02（DB_SCHEMA+8 业务模型，blocked_by NG-01 已解除）；MP-02~06 等 jp/ 参考图确认",
   "tasks": [
     {
       "id": "NG-01",
       "title": "后端基座初始化（FastAPI-Template 改造 + SQLModel + MySQL8）",
       "description": "Clone JiayuXu0/FastAPI-Template 到 backend/（去 .git，不留嵌套）。只复用其 Router → Service → Repository 分层、RBAC、JWT、arq 队列的设计与代码；ORM 层按定稿替换为 SQLModel + MySQL8（模板官方为 Tortoise+PG，必须替换，驱动 asyncmy）。backend/docker-compose.yml 拉 mysql8+redis+api+worker。跑通 JWT 登录与基础 RBAC，/docs Swagger 可访问。基座表保持原样，业务表前缀 gin_（本任务不建业务表）。License 已核验 MIT。Docker Desktop 未运行时先 `open -a Docker` 并轮询 docker info 最多 90s；仍不可用则完成代码/配置部分并在 sprint_output 写明验收阻塞，不要假装成功。",
-      "status": "submitted",
+      "status": "done",
       "priority": "high",
       "blocked_by": "",
       "verify": "bash init.sh 通过；curl api 健康端点/登录接口返回 JSON（真实端口与前缀记录进 sprint_output）；pytest 登录+RBAC 冒烟通过；确认 ORM 为 SQLModel（pip 无 tortoise 依赖）；backend/ 无嵌套 .git；git log 有 init commit",

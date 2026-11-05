@@ -43,3 +43,25 @@ CC 4 个会话均撞 60 轮上限未完成部署验证，以下缺口由 Hermes 
 ## 结论
 
 NG-01 全部 verify 项通过，部署链路（build → compose up → 健康检查 → 登录 → Swagger）端到端验证完成。建议 Evaluator 复跑后置 done，随后解锁 BE-02（DB_SCHEMA + 8 业务模型）。
+
+---
+
+## Evaluator 复跑评审（Hermes，2026-11-05）
+
+环境前置：本机 Docker Desktop daemon 未就绪（`docker info` 失败 ~180s），Hermes 重启 Docker Desktop（quit → pkill backend/virtualization → `open -a Docker`）后 ~10s 就绪；四容器为 3 小时前 CC 交付的 build，`docker compose up -d` 后全部 Up。
+
+verify 项逐条复跑（端口/前缀记录：宿主 8000，API 前缀 /api/v1）：
+
+| # | verify 项 | 命令 | 结果 |
+|---|---|---|---|
+| 1 | bash init.sh | `bash init.sh` | exit 0；5/5 通过（JSON 合法、docker ok、miniprogram package.json 存在） |
+| 2 | 健康端点返 JSON | `curl http://localhost:8000/api/v1/base/health` | 200 `{"status":"healthy","database":"connected","redis":"connected","version":"1.0.0","environment":"development"}` |
+| 3 | 登录接口返 JSON | `POST /api/v1/base/access_token {admin/abcd1234}` | 200 `{code:200, access_token, refresh_token}`；错误密码 → 400 |
+| 4 | pytest 登录+RBAC 冒烟 | `pytest tests/`（backend/.venv，exit=0） | 34 collect → 33 pass + 1 skip（敏感词过滤依赖缺失，模板自带）；`.venv/bin/python -m pytest ... > out` 后 echo exit=0 确认 |
+| 5 | ORM=SQLModel，无 tortoise | `importlib.metadata` 枚举 venv；grep 源码 | venv 有 `sqlmodel 0.0.48 / sqlalchemy 2.1.8 / asyncmy 0.2.17`，**无 tortoise-orm**；`grep -rn tortoise backend/src` = 0 残留 |
+| 6 | backend 无嵌套 .git | `find backend -maxdepth 2 -name .git` | 0 个（仅仓库根单 .git） |
+| 7 | git log 有 init commit | `git log` | init 链存在：4bce4a0(harness) → ca1f035(基座) → …→ 7b0e9d6(NG-01 sprint output) |
+
+四容器状态：mysql/redis **healthy**；api/worker health 从 starting → **healthy**（api 已确认）。
+
+结论：**approved**。全部 7 项 verify 通过，部署链端到端复现无误。tasks.json NG-01 置 done，BE-02（blocked_by NG-01）解锁。建议 CC 侧后续任务留意：测试 `exit 0` 为准（pytest -q 汇总行含 "errors.pydantic.dev" 易被 grep 误吞，以 exit code 判定更稳）。
