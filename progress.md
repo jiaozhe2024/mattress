@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-11-05 BE-06 wxapi 方案 CRUD+快照+分享（V2.0 核心）（submitted，待验收）
+- 7 端点挂 /api/v1/wxapi/schemes*：POST 创建（单事务固化快照，产品缺失 404 整体回滚）、PUT 整体替换（删旧快照行按产品当前状态重新固化）、GET 列表（本人 create_time desc 分页 size≤50，软删除不出现）、GET 详情（含快照列表）、GET /{id}/public（匿名回显，出参 Schema 物理无 user_id/openid，仅 nickname 展示字段）、DELETE 软删除（gin_scheme.deleted_at 新列 + alembic 迁移 a3f7c9d21e05，行/快照保留供 BE-09）、POST /{id}/share（SQL 原子自增）；越权一律 403，不存在/已删 404
+- 快照冻结 12 字段（aaa.md §4.3.1）：id/category_id/category_name/name/model/slogan/spec/sleep_feel/main_image/detail_images/real_images/detail_content；product_ids 去重保序 → sort=0..n-1；核心不变量测试：产品改名/改规格后旧方案 owner+public 双通道仍为快照旧值
+- 分层新增：schemas/wx_scheme.py + repositories/wx_scheme.py + services/wx_scheme_service.py + api/v1/wxapi/schemes.py（域异常 SchemeNotFound/Permission/SnapshotProductNotFound → 路由层 404/403）；models/scheme.py 加 deleted_at；未动 BE-04/BE-05/admin 代码
+- 验收：tests/test_wxapi_schemes.py 34 用例绿（全套 109 passed 1 skipped）；web 容器重建 + alembic upgrade head 后 curl 闭环实测（登录→建→查→public 无敏感字段→share x2 计数 1→2→列表→删→列表空/详情 404/public 404），MySQL 复核 deleted_at 置位且快照行保留；注意本地跑 pytest 前需 rm backend/test.db（sqlite create_all 不 ALTER 旧表）
+- 遗留风险：容器迁移为手动步骤（entrypoint 不跑 alembic）；软删除刻意不清快照行（硬删 CASCADE 已备）；PUT 无乐观锁，并发后写覆盖；创建方案不筛上下架（快照语义优先）
+- 详情 docs/exec-plans/active/BE-06-sprint-output.md；tasks.json BE-06 → submitted（未 commit，Hermes 所有权）；BE-07 已被用户决策推迟 V2.1
+
+## 2026-11-06 BE-06 验收通过 + MP-02 验收通过 + BE-08 后端完成（Hermes）
+- **BE-06 验收通过置 done**（Hermes 独立复跑 7 项 verify 全过）：pytest 全量 REAL exit=0（109 passed）；curl 闭环（创建→详情→public 匿名无 openid/user_id→share 1→2→软删后列表空/public 404→无 token PUT 401）；**快照不可变实测**：改 gin_product.name 后再查方案快照仍是旧值
+  - **验收中发现技术债务（BE-02 遗留）**：sqlite 测试库索引名撞名 `ix_gin_product_category_id`（gin_product.category_id vs gin_product_category.id 同名索引，SQLite 索引名库级全局唯一必撞）→ `rm test.db` 后单独跑测试 34 条全 ERROR；MySQL 索引名表级隔离不受影响。修法：去掉 BaseModel.id 冗余 index=True 或 category_id 显式命名。已记入 docs/exec-plans/tech-debt-tracker.md（优先级:中）
+- **MP-02 首页**（CC 撞轮次，代码完整提交 8ab9400，Hermes 补 sprint_output + 置 done）：npm run build:mp-weixin DONE 0 报错；/wxapi/home 聚合可达（banners=2 categories=7 services=1）；swiper 轮播/jump_type 1~4 分发/7 分类宫格/scroll-view 服务横滚/Pinia 传分类/悬浮选款回退全在；**e2e 浏览器走查被开发者工具登录前置阻塞**（automator 需扫码+开服务端口，用户侧操作，待补跑）
+- **BE-08 Admin 内容 CRUD**（CC 撞轮次，后端 3 commit 完成：b66f7cc OSS 适配层+/uploads 静态挂载、41fcebb 5 模块 CRUD API、549a118 27 用例全绿；**前端 5 个业务页面未做**，仅装了 wangEditor 依赖）；tasks.json 仍 pending → **待重派 CC 补前端**
+- 详情：docs/exec-plans/active/MP-02-sprint-output.md；BE-08 sprint_output 待前端完成后由 CC 或 Hermes 补
+
 ## 2026-11-05 BE-05 wxapi 产品/首页聚合/资讯/品牌接口（submitted，待验收）
 - 新增 7 个匿名只读 GET（/api/v1/wxapi/*）：home 聚合（banners+categories+services）、categories、products 列表（page/size≤50、category_id、keyword、sort=comprehensive|newest）、products/{id} 详情（富文本+detail_images/real_images JSON，下架 404）、articles 列表（可过滤 news/service）、articles/{id}（下线 404）、brand 单行配置
 - 分层：repositories/wx_content.py（关键词搜索用 SQLAlchemy contains(autoescape=True) LIKE 封装 name/model/slogan/spec，无裸拼 SQL，核心约定 #3）→ services/wx_content_service.py → api/v1/wxapi/content.py；信封 {code,msg,data}，分页 data={items,total,page,size}，时间字段对外 create_time
