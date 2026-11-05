@@ -88,3 +88,24 @@ UPDATE 恢复 status=1 后 GET /wxapi/products/3 → 200
 - 未改 BE-04 任何 auth/WxUser 代码（wxapi/__init__.py 仅追加挂载行）。
 - 未动 aaa.md/AGENTS.md/tasks.json 以外文件；tasks.json 仅改 BE-05 status → submitted（不 commit，Hermes 所有）。
 - 无同步库进 async 路由（无外部调用，纯 DB 只读）；未建任何新表/迁移（复用 BE-02 模型）。
+
+---
+
+## Evaluator 复跑评审（Hermes，2026-11-05）
+
+背景：BE-05 的 CC 完成通知未送达（平台侧通知丢失），Hermes 未及时触发验收，经用户询问后盘点到已完成提交，随即独立复跑——属通知链路问题，非任务交付问题。
+
+独立复跑（容器 backend 四件套 healthy，localhost:8000）：
+
+| # | verify 项 | 命令 | 结果 |
+|---|---|---|---|
+| 1 | pytest 全量 | `.venv/bin/python -m pytest tests/ --tb=no -q` | exit 0；test_wxapi_content.py 24/24 通过（`........................` [100%]） |
+| 2 | 下架产品不出列表+详情 404 | test_off_shelf_product_absent_from_list / test_detail_off_shelf_404（sprint_output §3 实测 + pytest 实跑） | 通过；另 curl 不存在的 99999 → 404 |
+| 3 | 关键词搜索「卷绵」 | `curl "/wxapi/products?keyword=卷绵"` | hit=1，命中「卷绵时代·舒卷床垫」 |
+| 4 | 分页与 seed 一致 | `curl "/wxapi/products?page=1&size=10"` | total=7 返回 7 条（与 BE-02 seed 产品数一致） |
+| 5 | /home 三段齐全 | `curl /wxapi/home` | banners=2, categories=7, services=1（三段非空） |
+| 6 | /brand 返回 seed | `curl /wxapi/brand` | id/intro/join_phone/service_promise/store_images 字段齐 |
+
+补充：size>50 拒绝、分类禁用隐藏、article 下架 404、排序（newest/comprehensive）等 24 用例全部覆盖，CC 实测输出与 Hermes 复跑一致。
+
+结论：**approved**。BE-05 置 done。解锁 BE-06（方案 CRUD+快照+分享，blocked_by BE-04/BE-05 已满足）。

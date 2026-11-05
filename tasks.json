@@ -1,7 +1,7 @@
 {
   "project": "mattress-ux（床垫选品方案小程序 V2.0）",
   "last_updated": "2026-11-05",
-  "current_focus": "BE-04（wxapi 登录+用户体系）验收 approved 置 done；下一步派 BE-05（wxapi 产品/首页聚合/资讯/品牌接口，blocked_by BE-02 已满足）；MP-02~06 等 jp/ 参考图确认",
+  "current_focus": "BE-05（wxapi 产品/首页聚合/资讯/品牌接口）验收 approved 置 done；下一步派 BE-06（方案 CRUD+快照+分享，blocked_by BE-04/BE-05 已满足）；MP-02~06 等 jp/ 参考图确认",
   "tasks": [
     {
       "id": "NG-01",
@@ -57,7 +57,7 @@
       "id": "BE-05",
       "title": "wxapi 产品/首页聚合/资讯/品牌接口",
       "description": "GET /wxapi/home 聚合（banners+categories+services 一次返回，服务=gin_article 中 category=服务板块）；GET /wxapi/categories（status=1, sort asc）；GET /wxapi/products（分页 page/size、category_id、keyword、sort 综合/新品，只返回上架产品，单页最大 50）；GET /wxapi/products/{id}（完整信息含 detail_images/real_images/富文本，下架 404）；GET /wxapi/articles（分页）、GET /wxapi/articles/{id}（富文本）；GET /wxapi/brand（品牌配置）。搜索走 Repository 层 LIKE/FULLTEXT 封装，禁止裸拼 SQL。全部可匿名访问。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "BE-02",
       "verify": "pytest：分页返回数与 seed 一致；下架产品不出现在列表且详情 404；搜索『卷绵』命中 seed 中卷绵产品；/home 三段字段齐全（banners/categories/services）；curl /brand 返回 seed 品牌信息",
