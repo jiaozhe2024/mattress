@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.responses import Response, StreamingResponse
 from fastapi.routing import APIRoute
+from fastapi.security import HTTPAuthorizationCredentials
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -93,6 +94,26 @@ class BackGroundTaskMiddleware(SimpleBaseMiddleware):
 
     async def after_request(self, request):
         await BgTasks.execute_tasks()
+
+
+def _extract_bearer_credentials(
+    request: Request,
+) -> HTTPAuthorizationCredentials | None:
+    """从 Authorization: Bearer 头提取凭证（兼容旧的裸 token 头）。
+
+    基座修改原因（BE-08）：模板原实现读 request.headers["token"] 裸字符串，
+    与 AuthControl.is_authed 的 HTTPBearer 参数签名不匹配（str 无 .credentials），
+    导致管理后台（统一发 Authorization: Bearer <jwt>）的审计日志操作人恒为 0/空。
+    这里构造 HTTPAuthorizationCredentials 对齐签名，使操作日志可归属到人。
+    """
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        token = auth_header[len("bearer ") :].strip()
+    else:
+        token = (request.headers.get("token") or "").strip()
+    if not token:
+        return None
+    return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
 
 class HttpAuditLogMiddleware(BaseHTTPMiddleware):
@@ -212,10 +233,10 @@ class HttpAuditLogMiddleware(BaseHTTPMiddleware):
                 data["summary"] = route.summary
         # 获取用户信息
         try:
-            token = request.headers.get("token")
             user_obj = None
-            if token:
-                user_obj: User = await AuthControl.is_authed(token)
+            credentials = _extract_bearer_credentials(request)
+            if credentials is not None:
+                user_obj: User = await AuthControl.is_authed(credentials)
             data["user_id"] = user_obj.id if user_obj else 0
             data["username"] = user_obj.username if user_obj else ""
         except Exception:
