@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
 
 # Ensure the local ``core`` package can be imported when the project is not
 # installed as a site package (e.g. during pytest execution).  This mirrors the
@@ -114,6 +115,16 @@ def create_app() -> FastAPI:
 
     register_exceptions(app)
     register_routers(app, prefix="/api")
+
+    # BE-08：图片本地 mock 存储 → 静态 URL 映射（OSS 适配层见 services/storage.py；
+    # 生产切 STORAGE_DRIVER=oss 后此挂载仅服务 seed 演示图，可保留）
+    uploads_dir = Path(settings.UPLOAD_DIR)
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        settings.UPLOAD_URL_PREFIX,
+        StaticFiles(directory=str(uploads_dir)),
+        name="uploads",
+    )
     return app
 
 

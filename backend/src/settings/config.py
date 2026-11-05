@@ -127,6 +127,14 @@ class Settings(BaseSettings):
     WX_ACCESS_TOKEN_EXPIRE_DAYS: int = 7
     WX_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
+    # ---- 图片存储（BE-08：OSS 适配层，当前仅 local 本地 mock 实现）----
+    # local：写入 UPLOAD_DIR 并由 FastAPI StaticFiles 以 UPLOAD_URL_PREFIX 挂载对外提供访问；
+    # oss：预留驱动位（生产接入阿里云 OSS/腾讯云 COS 时实现 storage.OssAdapter 后切换）。
+    STORAGE_DRIVER: str = os.getenv("STORAGE_DRIVER", "local")
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploads")
+    UPLOAD_URL_PREFIX: str = os.getenv("UPLOAD_URL_PREFIX", "/uploads")
+    MAX_IMAGE_SIZE: int = int(os.getenv("MAX_IMAGE_SIZE", str(10 * 1024 * 1024)))
+
     # arq 任务队列
     ARQ_REDIS_DB: int = int(os.getenv("ARQ_REDIS_DB", "1"))
     ARQ_QUEUE_NAME: str = os.getenv("ARQ_QUEUE_NAME", "arq:queue")
