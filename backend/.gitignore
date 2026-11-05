@@ -216,3 +216,6 @@ IMPROVEMENT_ROADMAP.md
 /1.md
 *.scratch.md
 .scratch/
+
+# sqlite 测试库（pytest 生成）
+test.db

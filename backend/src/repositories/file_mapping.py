@@ -1,6 +1,9 @@
 """文件映射仓库 - 管理文件ID和文件信息的映射关系"""
 
+from sqlalchemy import select
+
 from core.crud import CRUDBase
+from core.db import db_session
 from models.admin import FileMapping
 
 
@@ -45,7 +48,7 @@ class FileMappingRepository(
         file_path: str | None = None,
     ) -> FileMapping:
         """创建文件映射记录"""
-        return await FileMapping.create(
+        mapping = FileMapping(
             file_id=file_id,
             original_filename=original_name,
             file_type=file_type,
@@ -53,17 +56,30 @@ class FileMappingRepository(
             upload_user_id=user_id,
             file_path=file_path,
         )
+        async with db_session() as session:
+            session.add(mapping)
+            await session.flush()
+        return mapping
 
     async def get_file_info_by_ids(self, file_ids: list[str]) -> list[FileMapping]:
         """根据文件ID列表获取文件信息"""
         if not file_ids:
             return []
-
-        return await FileMapping.filter(file_id__in=file_ids).all()
+        async with db_session() as session:
+            return list(
+                (
+                    await session.scalars(
+                        select(FileMapping).where(FileMapping.file_id.in_(file_ids))
+                    )
+                ).all()
+            )
 
     async def get_file_mapping_by_file_id(self, file_id: str) -> dict | None:
         """根据文件ID获取文件映射信息"""
-        mapping = await FileMapping.filter(file_id=file_id).first()
+        async with db_session() as session:
+            mapping = await session.scalar(
+                select(FileMapping).where(FileMapping.file_id == file_id)
+            )
         if mapping:
             return {
                 "file_id": mapping.file_id,

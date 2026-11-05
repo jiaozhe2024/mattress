@@ -5,7 +5,6 @@ from pathlib import Path
 from fastapi import Depends, FastAPI
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-from tortoise import Tortoise
 
 # Ensure the local ``core`` package can be imported when the project is not
 # installed as a site package (e.g. during pytest execution).  This mirrors the
@@ -14,6 +13,7 @@ SRC_DIR = Path(__file__).resolve().parent
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+from core.db import close_db
 from core.dependency import get_current_username
 from core.exceptions import SettingNotFound
 from core.init_app import (
@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
     finally:
         await close_arq_pool()
         await cache_manager.disconnect()
-        await Tortoise.close_connections()
+        await close_db()
 
 
 def create_app() -> FastAPI:

@@ -4,8 +4,8 @@ import traceback
 from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from starlette.responses import Response
-from tortoise.exceptions import DoesNotExist, IntegrityError
 
 from log import logger
 from settings.config import settings
@@ -15,7 +15,7 @@ class SettingNotFound(Exception):
     pass
 
 
-async def DoesNotExistHandle(req: Request, exc: DoesNotExist) -> JSONResponse:
+async def DoesNotExistHandle(req: Request, exc: NoResultFound) -> JSONResponse:
     # 记录详细的错误信息到日志
     error_details = {
         "method": req.method,

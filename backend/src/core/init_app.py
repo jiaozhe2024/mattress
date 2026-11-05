@@ -1,25 +1,21 @@
-import asyncio
-
-from aerich import Command
 from fastapi import FastAPI
+from fastapi import HTTPException as FastAPIHTTPException
+from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.middleware import Middleware
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from tortoise.expressions import Q
+from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from api import api_router
 from api.v1.base.base import limiter
+from core.db import db_session, init_db as create_tables
 from core.exceptions import (
-    DoesNotExist,
     DoesNotExistHandle,
-    HTTPException,
     HttpExcHandle,
-    IntegrityError,
     IntegrityHandle,
-    RequestValidationError,
     RequestValidationHandle,
-    ResponseValidationError,
     ResponseValidationHandle,
     UnhandledExceptionHandle,
 )
@@ -31,10 +27,11 @@ from core.middlewares import (
     SecurityHeadersMiddleware,
 )
 from log import logger
-from models.admin import Api, Menu, Role
+from models.admin import Api, Menu, Role, RoleApi, RoleMenu, User
 from repositories.api import api_repository
-from repositories.user import UserCreate, user_repository
+from repositories.user import user_repository
 from schemas.menus import MenuType
+from schemas.users import UserCreate
 from settings.config import settings
 
 
@@ -65,8 +62,8 @@ def make_middlewares():
 
 
 def register_exceptions(app: FastAPI):
-    app.add_exception_handler(DoesNotExist, DoesNotExistHandle)
-    app.add_exception_handler(HTTPException, HttpExcHandle)
+    app.add_exception_handler(NoResultFound, DoesNotExistHandle)
+    app.add_exception_handler(FastAPIHTTPException, HttpExcHandle)
     app.add_exception_handler(IntegrityError, IntegrityHandle)
     app.add_exception_handler(RequestValidationError, RequestValidationHandle)
     app.add_exception_handler(ResponseValidationError, ResponseValidationHandle)
@@ -83,27 +80,32 @@ def register_routers(app: FastAPI, prefix: str = "/api"):
 
 async def init_superuser():
     logger.info("🔧 开始初始化超级管理员用户...")
-    user = await user_repository.model.exists()
-    if not user:
-        await user_repository.create_user(
-            UserCreate(
-                username="admin",
-                email="admin@admin.com",
-                password="abcd1234",
-                is_active=True,
-                is_superuser=True,
+    async with db_session() as session:
+        exists = await session.scalar(select(User.id).limit(1))
+        if exists is None:
+            await user_repository.create_user(
+                UserCreate(
+                    username="admin",
+                    email="admin@admin.com",
+                    password="abcd1234",
+                    is_active=True,
+                    is_superuser=True,
+                )
             )
-        )
-        logger.info("✅ 超级管理员用户创建成功 - 用户名: admin")
-    else:
-        logger.info("ℹ️ 超级管理员用户已存在，跳过创建")
+            logger.info("✅ 超级管理员用户创建成功 - 用户名: admin / 密码: abcd1234")
+        else:
+            logger.info("ℹ️ 超级管理员用户已存在，跳过创建")
 
 
 async def init_menus():
     logger.info("🔧 开始初始化系统菜单...")
-    menus = await Menu.exists()
-    if not menus:
-        parent_menu = await Menu.create(
+    async with db_session() as session:
+        menu_count = await session.scalar(select(Menu.id).limit(1))
+        if menu_count is not None:
+            logger.info("ℹ️ 系统菜单已存在，跳过初始化")
+            return
+
+        parent_menu = Menu(
             menu_type=MenuType.CATALOG,
             name="系统管理",
             path="/system",
@@ -115,6 +117,9 @@ async def init_menus():
             keepalive=False,
             redirect="/system/user",
         )
+        session.add(parent_menu)
+        await session.flush()  # 取得 parent_menu.id
+
         children_menu = [
             Menu(
                 menu_type=MenuType.MENU,
@@ -183,22 +188,22 @@ async def init_menus():
                 keepalive=False,
             ),
         ]
-        await Menu.bulk_create(children_menu)
-        await Menu.create(
-            menu_type=MenuType.MENU,
-            name="一级菜单",
-            path="/top-menu",
-            order=2,
-            parent_id=0,
-            icon="material-symbols:featured-play-list-outline",
-            is_hidden=False,
-            component="/top-menu",
-            keepalive=False,
-            redirect="",
+        session.add_all(children_menu)
+        session.add(
+            Menu(
+                menu_type=MenuType.MENU,
+                name="一级菜单",
+                path="/top-menu",
+                order=2,
+                parent_id=0,
+                icon="material-symbols:featured-play-list-outline",
+                is_hidden=False,
+                component="/top-menu",
+                keepalive=False,
+                redirect="",
+            )
         )
-        logger.info("✅ 系统菜单初始化成功 - 菜单数量: 8")
-    else:
-        logger.info("ℹ️ 系统菜单已存在，跳过初始化")
+    logger.info("✅ 系统菜单初始化成功 - 菜单数量: 8")
 
 
 async def init_apis():
@@ -210,7 +215,8 @@ async def init_apis():
     """
     logger.info("🔧 开始同步 API 数据...")
     result = await api_repository.refresh_api()
-    api_count = await Api.all().count()
+    async with db_session() as session:
+        api_count = await session.scalar(select(func.count()).select_from(Api))
     logger.info(
         f"✅ API 同步完成 - 当前 {api_count} 条 "
         f"(创建 {result['created']}, 更新 {result['updated']}, 删除 {result['deleted']})"
@@ -219,79 +225,69 @@ async def init_apis():
     # 升级路径补偿：API 集合发生变化时，刷新管理员角色的全量 API 关联。
     # init_roles 仅在角色不存在时跑（首装），已有库下不会触发 → 必须在这里补。
     if result["created"] or result["deleted"]:
-        admin = await Role.filter(name="管理员").first()
-        if admin is not None:
-            await admin.apis.clear()
-            all_apis = await Api.all()
-            if all_apis:
-                await admin.apis.add(*all_apis)
-            logger.info(f"🔄 管理员角色 API 关联已刷新（{len(all_apis)} 条）")
-
-
-async def init_db():
-    command = Command(tortoise_config=settings.TORTOISE_ORM)
-    try:
-        await command.init_db(safe=True)
-    except FileExistsError:
-        pass
-
-    await command.init()
-    try:
-        await command.migrate(no_input=True)
-    except AttributeError as e:
-        logger.error(f"数据库迁移失败: {e}")
-        logger.warning("请手动检查数据库和migrations状态")
-        # 不再自动删除migrations文件夹，避免意外丢失迁移历史
-        # 如需重置migrations，请手动执行：rm -rf migrations && uv run aerich init-db
-        raise RuntimeError("数据库迁移失败，请检查数据库连接和migrations状态") from e
-
-    await command.upgrade(run_in_transaction=True)
+        async with db_session() as session:
+            admin = await session.scalar(
+                select(Role).where(Role.name == "管理员")
+            )
+            if admin is not None:
+                all_apis = (await session.scalars(select(Api))).all()
+                admin.apis = list(all_apis)
+                logger.info(f"🔄 管理员角色 API 关联已刷新（{len(all_apis)} 条）")
 
 
 async def init_roles():
     logger.info("🔧 开始初始化用户角色...")
-    roles = await Role.exists()
-    if not roles:
-        admin_role = await Role.create(
-            name="管理员",
-            desc="管理员角色",
+    async with db_session() as session:
+        exists = await session.scalar(select(Role.id).limit(1))
+        if exists is not None:
+            role_count = await session.scalar(select(func.count()).select_from(Role))
+            logger.info(f"ℹ️ 用户角色已存在，跳过初始化 - 当前角色数量: {role_count}")
+            return
+
+        admin_role = Role(name="管理员", desc="管理员角色")
+        user_role = Role(name="普通用户", desc="普通用户角色")
+        session.add(admin_role)
+        session.add(user_role)
+        await session.flush()
+
+        # 分配所有 API / 菜单给管理员角色。
+        # 注意：新建对象上直接赋值 relationship 会触发 lazy-load IO
+        # （async 下抛 MissingGreenlet），因此显式写关联表行。
+        all_apis = (await session.scalars(select(Api))).all()
+        all_menus = (await session.scalars(select(Menu))).all()
+        session.add_all(
+            [RoleApi(role_id=admin_role.id, api_id=a.id) for a in all_apis]
         )
-        user_role = await Role.create(
-            name="普通用户",
-            desc="普通用户角色",
+        session.add_all(
+            [RoleMenu(role_id=admin_role.id, menu_id=m.id) for m in all_menus]
         )
 
-        # 分配所有API给管理员角色
-        all_apis = await Api.all()
-        await admin_role.apis.add(*all_apis)
-        # 分配所有菜单给管理员和普通用户
-        all_menus = await Menu.all()
-        await admin_role.menus.add(*all_menus)
-        await user_role.menus.add(*all_menus)
-
-        # 为普通用户分配基本API
-        basic_apis = await Api.filter(Q(method__in=["GET"]) | Q(tags="基础模块"))
-        await user_role.apis.add(*basic_apis)
-
-        logger.info("✅ 用户角色初始化成功 - 角色: 管理员, 普通用户")
-    else:
-        role_count = await Role.all().count()
-        logger.info(f"ℹ️ 用户角色已存在，跳过初始化 - 当前角色数量: {role_count}")
+        # 普通用户：所有菜单 + 基础 API（GET 或 tags=基础模块）
+        basic_apis = (
+            await session.scalars(
+                select(Api).where(or_(Api.method == "GET", Api.tags == "基础模块"))
+            )
+        ).all()
+        session.add_all(
+            [RoleMenu(role_id=user_role.id, menu_id=m.id) for m in all_menus]
+        )
+        session.add_all(
+            [RoleApi(role_id=user_role.id, api_id=a.id) for a in basic_apis]
+        )
+    logger.info("✅ 用户角色初始化成功 - 角色: 管理员, 普通用户")
 
 
 async def init_data():
     logger.info("🚀 系统初始化开始...")
 
-    logger.info("🔧 开始数据库初始化和迁移...")
-    await init_db()
-    logger.info("✅ 数据库初始化完成")
+    logger.info("🔧 开始数据库建表（基座表）...")
+    await create_tables()
+    logger.info("✅ 数据库表结构就绪")
 
-    logger.info("🔄 并行初始化基础数据...")
-    await asyncio.gather(
-        init_superuser(),
-        init_menus(),
-        init_apis(),
-    )
+    logger.info("🔄 初始化基础数据...")
+    await init_superuser()
+    await init_menus()
+    await init_apis()
     logger.info("✅ 基础数据初始化完成")
 
     await init_roles()

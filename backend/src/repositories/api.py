@@ -1,6 +1,8 @@
 from fastapi.routing import APIRoute
+from sqlalchemy import delete, select
 
 from core.crud import CRUDBase
+from core.db import db_session
 from log import logger
 from models.admin import Api
 from schemas.apis import ApiCreate, ApiUpdate
@@ -18,60 +20,69 @@ class ApiRepository(CRUDBase[Api, ApiCreate, ApiUpdate]):
 
         routes = app.routes
 
-        # 删除废弃API数据
-        all_api_list = []
-        for route in app.routes:
-            # 只更新有鉴权的API
+        # 路由表里带鉴权的 API 集合
+        route_apis: list[tuple[str, str]] = []
+        for route in routes:
             if isinstance(route, APIRoute) and len(route.dependencies) > 0:
-                all_api_list.append((list(route.methods)[0], route.path_format))
-        delete_api = []
-        for api in await Api.all():
-            if (api.method, api.path) not in all_api_list:
-                delete_api.append((api.method, api.path))
-        for item in delete_api:
-            method, path = item
-            logger.debug(f"API Deleted {method} {path}")
-            await Api.filter(method=method, path=path).delete()
+                route_apis.append((list(route.methods)[0], route.path_format))
 
         created_count = 0
         updated_count = 0
-        for route in routes:
-            if isinstance(route, APIRoute) and len(route.dependencies) > 0:
-                method = list(route.methods)[0]
-                path = route.path_format
-                summary = route.summary
-                tags = list(route.tags)[0]
-                api_obj = await Api.filter(method=method, path=path).first()
-                if api_obj:
-                    await api_obj.update_from_dict(
-                        {
-                            "method": method,
-                            "path": path,
-                            "summary": summary,
-                            "tags": tags,
-                        }
-                    ).save()
-                    updated_count += 1
-                else:
+        deleted = 0
+
+        async with db_session() as session:
+            # 现有 Api 表里已不在路由表中的 → 删除
+            existing = (await session.scalars(select(Api))).all()
+            for api in existing:
+                if (api.method, api.path) not in route_apis:
+                    logger.debug(f"API Deleted {api.method} {api.path}")
+                    await session.execute(
+                        delete(Api).where(Api.id == api.id)
+                    )
+                    deleted += 1
+
+            # 路由表里不在 Api 表中的 → 创建；已存在且内容变化 → 更新
+            for method, path in route_apis:
+                summary = None
+                tags = ""
+                for route in routes:
+                    if (
+                        isinstance(route, APIRoute)
+                        and route.methods
+                        and list(route.methods)[0] == method
+                        and route.path_format == path
+                    ):
+                        summary = route.summary
+                        tags = list(route.tags)[0] if route.tags else ""
+                        break
+
+                api_obj = await session.scalar(
+                    select(Api).where(Api.method == method, Api.path == path)
+                )
+                if api_obj is None:
                     logger.debug(f"API Created {method} {path}")
-                    await Api.create(
-                        **{
-                            "method": method,
-                            "path": path,
-                            "summary": summary,
-                            "tags": tags,
-                        }
+                    session.add(
+                        Api(
+                            method=method,
+                            path=path,
+                            summary=summary,
+                            tags=tags,
+                        )
                     )
                     created_count += 1
+                else:
+                    api_obj.summary = summary
+                    api_obj.tags = tags
+                    updated_count += 1
 
         # API 表变更影响所有用户的权限决策，全量失效权限缓存
-        if created_count or updated_count or delete_api:
+        if created_count or updated_count or deleted:
             await clear_user_perms_cache_all()
 
         return {
             "created": created_count,
             "updated": updated_count,
-            "deleted": len(delete_api),
+            "deleted": deleted,
         }
 
 

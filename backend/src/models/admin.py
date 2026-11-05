@@ -1,4 +1,8 @@
-from tortoise import fields
+from typing import ClassVar, Optional
+
+from pydantic import NaiveDatetime
+from sqlalchemy import Column, JSON
+from sqlmodel import Field, Relationship, SQLModel
 
 from schemas.menus import MenuType
 
@@ -6,129 +10,145 @@ from .base import BaseModel, TimestampMixin
 from .enums import MethodType
 
 
-class User(BaseModel, TimestampMixin):
-    username = fields.CharField(
-        max_length=20, unique=True, description="用户名称", index=True
-    )
-    alias = fields.CharField(max_length=30, null=True, description="姓名", index=True)
-    email = fields.CharField(
-        max_length=255, unique=True, description="邮箱", index=True
-    )
-    phone = fields.CharField(max_length=20, null=True, description="电话", index=True)
-    password = fields.CharField(max_length=128, null=True, description="密码")
-    is_active = fields.BooleanField(default=True, description="是否激活", index=True)
-    is_superuser = fields.BooleanField(
-        default=False, description="是否为超级管理员", index=True
-    )
-    last_login = fields.DatetimeField(null=True, description="最后登录时间", index=True)
-    roles = fields.ManyToManyField("models.Role", related_name="user_roles")
-    dept_id = fields.IntField(null=True, description="部门ID", index=True)
+# ---------------- 多对多关联表（显式 link model） ----------------
+class UserRole(SQLModel, table=True):
+    """用户-角色关联表。"""
 
-    class Meta:
-        table = "user"
+    user_id: int = Field(foreign_key="user.id", primary_key=True)
+    role_id: int = Field(foreign_key="role.id", primary_key=True)
 
 
-class Role(BaseModel, TimestampMixin):
-    name = fields.CharField(
-        max_length=20, unique=True, description="角色名称", index=True
-    )
-    desc = fields.CharField(max_length=500, null=True, description="角色描述")
-    menus = fields.ManyToManyField("models.Menu", related_name="role_menus")
-    apis = fields.ManyToManyField("models.Api", related_name="role_apis")
+class RoleMenu(SQLModel, table=True):
+    """角色-菜单关联表。"""
 
-    class Meta:
-        table = "role"
+    role_id: int = Field(foreign_key="role.id", primary_key=True)
+    menu_id: int = Field(foreign_key="menu.id", primary_key=True)
 
 
-class Api(BaseModel, TimestampMixin):
-    path = fields.CharField(max_length=100, description="API路径", index=True)
-    method = fields.CharEnumField(MethodType, description="请求方法", index=True)
-    summary = fields.CharField(max_length=500, description="请求简介", index=True)
-    tags = fields.CharField(max_length=100, description="API标签", index=True)
+class RoleApi(SQLModel, table=True):
+    """角色-接口关联表。"""
 
-    class Meta:
-        table = "api"
+    role_id: int = Field(foreign_key="role.id", primary_key=True)
+    api_id: int = Field(foreign_key="api.id", primary_key=True)
 
 
-class Menu(BaseModel, TimestampMixin):
-    name = fields.CharField(max_length=20, description="菜单名称", index=True)
-    remark = fields.JSONField(null=True, description="保留字段")
-    menu_type = fields.CharEnumField(MenuType, null=True, description="菜单类型")
-    icon = fields.CharField(max_length=100, null=True, description="菜单图标")
-    path = fields.CharField(max_length=100, description="菜单路径", index=True)
-    order = fields.IntField(default=0, description="排序", index=True)
-    parent_id = fields.IntField(default=0, description="父菜单ID", index=True)
-    is_hidden = fields.BooleanField(default=False, description="是否隐藏")
-    component = fields.CharField(max_length=100, description="组件")
-    keepalive = fields.BooleanField(default=True, description="存活")
-    redirect = fields.CharField(max_length=100, null=True, description="重定向")
+# ---------------- 主表 ----------------
+class User(BaseModel, TimestampMixin, table=True):
+    __tablename__ = "user"
 
-    class Meta:
-        table = "menu"
+    # to_dict(m2m=True) 序列化的关系字段清单
+    # ClassVar：避免被 pydantic 当作实例私有属性（下划线开头）处理
+    _m2m_relations: ClassVar[list[str]] = ["roles"]
 
+    username: str = Field(max_length=20, unique=True, index=True, description="用户名称")
+    alias: str | None = Field(default=None, max_length=30, index=True, description="姓名")
+    email: str = Field(max_length=255, unique=True, index=True, description="邮箱")
+    phone: str | None = Field(default=None, max_length=20, description="电话")
+    password: str | None = Field(default=None, max_length=128, description="密码")
+    is_active: bool = Field(default=True, index=True, description="是否激活")
+    is_superuser: bool = Field(default=False, index=True, description="是否为超级管理员")
+    last_login: NaiveDatetime | None = Field(default=None, index=True, description="最后登录时间")
+    dept_id: int | None = Field(default=None, index=True, description="部门ID")
 
-class Dept(BaseModel, TimestampMixin):
-    name = fields.CharField(
-        max_length=20, unique=True, description="部门名称", index=True
-    )
-    desc = fields.CharField(max_length=500, null=True, description="备注")
-    is_deleted = fields.BooleanField(
-        default=False, description="软删除标记", index=True
-    )
-    order = fields.IntField(default=0, description="排序", index=True)
-    parent_id = fields.IntField(
-        default=0, max_length=10, description="父部门ID", index=True
+    roles: list["Role"] = Relationship(
+        back_populates="users",
+        link_model=UserRole,
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
 
-    class Meta:
-        table = "dept"
 
+class Role(BaseModel, TimestampMixin, table=True):
+    __tablename__ = "role"
 
-class DeptClosure(BaseModel, TimestampMixin):
-    ancestor = fields.IntField(description="父代", index=True)
-    descendant = fields.IntField(description="子代", index=True)
-    level = fields.IntField(default=0, description="深度", index=True)
+    _m2m_relations: ClassVar[list[str]] = ["menus", "apis"]
 
+    name: str = Field(max_length=20, unique=True, index=True, description="角色名称")
+    desc: str | None = Field(default=None, max_length=500, description="角色描述")
 
-class AuditLog(BaseModel, TimestampMixin):
-    user_id = fields.IntField(description="用户ID", index=True)
-    username = fields.CharField(
-        max_length=64, default="", description="用户名称", index=True
+    users: list["User"] = Relationship(
+        back_populates="roles", link_model=UserRole,
+        sa_relationship_kwargs={"lazy": "noload"},
     )
-    module = fields.CharField(
-        max_length=64, default="", description="功能模块", index=True
+    menus: list["Menu"] = Relationship(
+        link_model=RoleMenu, sa_relationship_kwargs={"lazy": "selectin"}
     )
-    summary = fields.CharField(
-        max_length=128, default="", description="请求描述", index=True
+    apis: list["Api"] = Relationship(
+        link_model=RoleApi, sa_relationship_kwargs={"lazy": "selectin"}
     )
-    method = fields.CharField(
-        max_length=10, default="", description="请求方法", index=True
-    )
-    path = fields.CharField(
-        max_length=255, default="", description="请求路径", index=True
-    )
-    status = fields.IntField(default=-1, description="状态码", index=True)
-    response_time = fields.IntField(
-        default=0, description="响应时间(单位ms)", index=True
-    )
-    request_args = fields.JSONField(null=True, description="请求参数")
-    response_body = fields.JSONField(null=True, description="返回数据")
-
-    class Meta:
-        table = "audit_log"
 
 
-class FileMapping(BaseModel, TimestampMixin):
-    """文件映射模型 - 管理文件ID和文件信息的映射关系"""
+class Api(BaseModel, TimestampMixin, table=True):
+    __tablename__ = "api"
 
-    file_id = fields.CharField(
-        max_length=255, unique=True, description="文件ID", index=True
+    path: str = Field(max_length=100, index=True, description="API路径")
+    method: str = Field(max_length=10, index=True, description="请求方法")
+    summary: str = Field(max_length=500, description="请求简介")
+    tags: str = Field(max_length=100, description="API标签")
+
+
+class Menu(BaseModel, TimestampMixin, table=True):
+    __tablename__ = "menu"
+
+    _m2m_relations: ClassVar[list[str]] = ["roles"]
+
+    name: str = Field(max_length=20, index=True, description="菜单名称")
+    remark: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True), description="保留字段")
+    menu_type: str | None = Field(default=None, max_length=1, description="菜单类型")
+    icon: str | None = Field(default=None, max_length=100, description="菜单图标")
+    path: str = Field(max_length=100, index=True, description="菜单路径")
+    order: int = Field(default=0, index=True, description="排序")
+    parent_id: int = Field(default=0, description="父菜单ID")
+    is_hidden: bool = Field(default=False, description="是否隐藏")
+    component: str = Field(max_length=100, description="组件")
+    keepalive: bool = Field(default=True, description="存活")
+    redirect: str | None = Field(default=None, max_length=100, description="重定向")
+
+    roles: list["Role"] = Relationship(
+        back_populates="menus", link_model=RoleMenu,
+        sa_relationship_kwargs={"lazy": "noload"},
     )
-    original_filename = fields.CharField(max_length=255, description="原始文件名")
-    file_type = fields.CharField(max_length=50, description="文件类型")
-    file_size = fields.BigIntField(null=True, description="文件大小(字节)")
-    upload_user_id = fields.IntField(description="上传用户ID", index=True)
-    file_path = fields.CharField(max_length=500, null=True, description="本地文件路径")
 
-    class Meta:
-        table = "file_mapping"
+
+class Dept(BaseModel, TimestampMixin, table=True):
+    __tablename__ = "dept"
+
+    name: str = Field(max_length=20, unique=True, index=True, description="部门名称")
+    desc: str | None = Field(default=None, max_length=500, description="备注")
+    is_deleted: bool = Field(default=False, index=True, description="软删除标记")
+    order: int = Field(default=0, index=True, description="排序")
+    parent_id: int = Field(default=0, index=True, description="父部门ID")
+
+
+class DeptClosure(BaseModel, TimestampMixin, table=True):
+    __tablename__ = "deptclosure"
+    ancestor: int = Field(index=True, description="父代")
+    descendant: int = Field(index=True, description="子代")
+    level: int = Field(default=0, description="深度")
+
+
+class AuditLog(BaseModel, TimestampMixin, table=True):
+    __tablename__ = "auditlog"
+
+    user_id: int = Field(index=True, description="用户ID")
+    username: str = Field(default="", max_length=64, index=True, description="用户名称")
+    module: str = Field(default="", max_length=64, index=True, description="功能模块")
+    summary: str = Field(default="", max_length=128, index=True, description="请求描述")
+    method: str = Field(default="", max_length=10, index=True, description="请求方法")
+    path: str = Field(default="", max_length=255, index=True, description="请求路径")
+    status: int = Field(default=-1, description="状态码")
+    response_time: int = Field(default=0, description="响应时间(单位ms)")
+    request_args: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True), description="请求参数")
+    response_body: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True), description="返回数据")
+
+
+class FileMapping(BaseModel, TimestampMixin, table=True):
+    """文件映射模型 - 管理文件ID和文件信息的映射关系。"""
+
+    __tablename__ = "file_mapping"
+
+    file_id: str = Field(max_length=255, unique=True, index=True, description="文件ID")
+    original_filename: str = Field(max_length=255, description="原始文件名")
+    file_type: str = Field(max_length=50, description="文件类型")
+    file_size: int | None = Field(default=None, description="文件大小(字节)")
+    upload_user_id: int = Field(index=True, description="上传用户ID")
+    file_path: str | None = Field(default=None, max_length=500, description="本地文件路径")

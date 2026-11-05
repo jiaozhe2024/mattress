@@ -1,20 +1,19 @@
 [project]
-name = "evoai-backend-template"
-version = "1.0.0"
-description = "🚀 企业级FastAPI后端模板 - 开箱即用的三层架构，内置RBAC权限管理、文件管理等核心功能"
+name = "mattress-ux-backend"
+version = "2.0.0"
+description = "床垫选品方案小程序后端基座（FastAPI + SQLModel + MySQL8 + Redis + arq）"
 authors = [
-    {name = "EvoAI Team"}
+    {name = "mattress-ux"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = [
-    "fastapi", "backend", "template", "enterprise", "rbac",
-    "三层架构", "权限管理", "UV", "python", "async", "jwt",
-    "tortoise-orm", "postgresql", "sqlite", "docker", "ci-cd",
-    "microservices", "api", "authentication", "authorization",
-    "crud", "restful", "swagger", "openapi", "production-ready",
-    "scalable", "secure", "modern", "clean-architecture"
+    "fastapi", "backend", "rbac",
+    "三层架构", "权限管理", "SQLModel", "MySQL",
+    "async", "jwt", "arq", "redis",
+    "swagger", "openapi", "production-ready",
+    "scalable", "secure", "modern", "clean-architecture",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -22,19 +21,19 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Framework :: FastAPI",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
-    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+# 基座沿用 FastAPI-Template(MIT) 的分层/RBAC/JWT/arq 语义，ORM 层替换为 SQLModel + asyncmy(MySQL8)
 dependencies = [
     "fastapi>=0.100.0",
-    "tortoise-orm[asyncpg]>=0.20.0",
+    "sqlmodel>=0.0.22",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncmy>=0.2.9",
     "uvicorn[standard]>=0.23.0",
-    "aerich>=0.7.2",
     "PyJWT>=2.8.0",
     "pydantic-settings>=2.0.0",
     "pydantic[email]>=2.0.0",
@@ -43,8 +42,6 @@ dependencies = [
     "argon2-cffi>=23.0.0",
     "python-multipart>=0.0.6",
     "httpx>=0.24.0",
-    "psycopg2-binary>=2.9.0",
-    "asyncpg>=0.28.0",
     "setuptools>=68.0.0",
     "slowapi>=0.1.9",
     "redis>=4.5.0",
@@ -71,14 +68,9 @@ test = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
     "httpx>=0.24.0",
+    # 测试环境用 aiosqlite 替代 asyncmy（不依赖真实 MySQL）
+    "aiosqlite>=0.20.0",
 ]
-
-[project.urls]
-Homepage = "http://fastapi.infyai.cn/"
-Documentation = "http://fastapi.infyai.cn/"
-Repository = "https://github.com/JiayuXu0/FastAPI-Template.git"
-"Bug Tracker" = "https://github.com/JiayuXu0/FastAPI-Template/issues"
-"Source Code" = "https://github.com/JiayuXu0/FastAPI-Template"
 
 [build-system]
 requires = ["hatchling"]
@@ -88,20 +80,15 @@ build-backend = "hatchling.build"
 packages = ["src/api", "src/core", "src/models", "src/schemas", "src/services", "src/repositories", "src/utils", "src/settings", "src/log", "src/handlers", "src/tasks"]
 
 [tool.hatch.envs.default]
-python = "3.11"
+python = "3.12"
 dependencies = []
 
 [tool.hatch.envs.default.env-vars]
 PYTHONPATH = "src"
 
-[tool.aerich]
-tortoise_orm = "aerich_config.TORTOISE_ORM"
-location = "./migrations"
-src_folder = "./."
-
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py312']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -158,7 +145,7 @@ exclude_lines = [
 ]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 88
 src = ["src"]
 
@@ -188,9 +175,7 @@ ignore = [
 "src/__init__.py" = ["E402"]
 
 [tool.mypy]
-python_version = "3.11"
-# 渐进式严格化：先保住硬错误红线（语法/导入/未定义符号），
-# 业务代码补完类型注解后再打开 disallow_untyped_defs / warn_return_any 等
+python_version = "3.12"
 warn_unused_configs = true
 disallow_untyped_defs = false
 warn_return_any = false
@@ -203,8 +188,10 @@ exclude = [
 
 [[tool.mypy.overrides]]
 module = [
-    "tortoise.*",
-    "aerich.*",
+    "sqlmodel.*",
+    "sqlalchemy.*",
+    "asyncmy.*",
+    "aiosqlite.*",
     "loguru.*",
     "arq.*",
     "prometheus_client.*",
@@ -222,20 +209,5 @@ dev = [
     "pre-commit>=3.0.0",
     "mypy>=1.17.1",
     "bandit>=1.8.6",
-]
-
-docs = [
-    "mkdocs>=1.6.0",
-    "mkdocs-material>=9.5.0",
-    "mkdocs-swagger-ui-tag>=0.6.0",
-    "mkdocs-gen-files>=0.5.0",
-    "mkdocs-literate-nav>=0.6.0",
-    "mkdocs-section-index>=0.3.0",
-    "mkdocstrings[python]>=0.25.0",
-    "mkdocs-macros-plugin>=1.0.0",
-    "mkdocs-minify-plugin>=0.8.0",
-    "mkdocs-git-revision-date-localized-plugin>=1.2.0",
-    "mkdocs-awesome-pages-plugin>=2.9.0",
-    "mkdocs-redirects>=1.2.0",
-    "pymdown-extensions>=10.0.0",
+    "aiosqlite>=0.20.0",
 ]

@@ -1,7 +1,9 @@
 import json
 import os
 import secrets
+from urllib.parse import quote_plus, urlparse
 
+from arq.connections import RedisSettings
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,9 +16,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
     VERSION: str = "0.1.0"
-    APP_TITLE: str = os.getenv("APP_TITLE", "Vue FastAPI Admin")
-    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "Vue FastAPI Admin")
-    APP_DESCRIPTION: str = "Description"
+    APP_TITLE: str = os.getenv("APP_TITLE", "mattress-ux Backend")
+    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "mattress-ux Backend")
+    APP_DESCRIPTION: str = "床垫选品方案小程序后端基座"
 
     CORS_ORIGINS: str = os.getenv(
         "CORS_ORIGINS", "http://localhost:3000,http://localhost:8080"
@@ -53,65 +55,38 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4  # 4 hours
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 days for refresh token
-    # 数据库配置
-    DB_ENGINE: str = "postgres"  # 默认使用PostgreSQL
+
+    # 数据库配置：SQLModel + asyncmy（MySQL8）
+    DB_ENGINE: str = "mysql"  # mysql | sqlite（测试用，恰逢全局约定）
     DB_HOST: str = "localhost"
-    DB_PORT: int = 5432
-    DB_USER: str = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
-    DB_NAME: str = "fastapi_backend"
+    DB_PORT: int = 3306
+    DB_USER: str = os.getenv("DB_USER", "mattress")
+    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "mattress_secret")
+    DB_NAME: str = "mattress"
+
+    # 连接池配置（asyncmy）
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    DB_POOL_RECYCLE: int = 3600
+    DB_POOL_PRE_PING: bool = True
 
     @property
-    def TORTOISE_ORM(self) -> dict:
-        """动态生成Tortoise ORM配置"""
-        if self.DB_ENGINE == "postgres":
-            return {
-                "connections": {
-                    "default": {
-                        "engine": "tortoise.backends.asyncpg",
-                        "credentials": {
-                            "host": self.DB_HOST,
-                            "port": self.DB_PORT,
-                            "user": self.DB_USER,
-                            "password": self.DB_PASSWORD,
-                            "database": self.DB_NAME,
-                            # 连接池配置
-                            "minsize": 1,
-                            "maxsize": 20,
-                            "max_queries": 50000,
-                            "max_inactive_connection_lifetime": 300,
-                            "timeout": 60,
-                            "command_timeout": 60,
-                        },
-                    }
-                },
-                "apps": {
-                    "models": {
-                        "models": ["models", "aerich.models"],
-                        "default_connection": "default",
-                    },
-                },
-                "use_tz": False,
-                "timezone": "Asia/Shanghai",
-            }
-        else:
-            # SQLite fallback configuration
-            return {
-                "connections": {
-                    "default": {
-                        "engine": "tortoise.backends.sqlite",
-                        "credentials": {"file_path": f"{self.BASE_DIR}/db.sqlite3"},
-                    }
-                },
-                "apps": {
-                    "models": {
-                        "models": ["models", "aerich.models"],
-                        "default_connection": "default",
-                    },
-                },
-                "use_tz": False,
-                "timezone": "Asia/Shanghai",
-            }
+    def DATABASE_URL(self) -> str:
+        """SQLModel/SQLAlchemy 异步连接串。
+
+        mysql → mysql+asyncmy://...
+        sqlite（测试）→ sqlite+aiosqlite:///...（落在 BASE_DIR 下临时文件）
+        """
+        if self.DB_ENGINE == "sqlite":
+            # 测试用文件型 sqlite（aiosqlite 驱动）；路径不做 percent-encode，
+            # 否则 SQLAlchemy sqlite 方言不会解码，会生成畸形文件名。
+            return f"sqlite+aiosqlite:///{self.BASE_DIR}/test.db"
+        user = quote_plus(self.DB_USER)
+        password = quote_plus(self.DB_PASSWORD)
+        return (
+            f"mysql+asyncmy://{user}:{password}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
+        )
 
     DATETIME_FORMAT: str = "%Y-%m-%d %H:%M:%S"
 
@@ -156,12 +131,8 @@ class Settings(BaseSettings):
         return nets
 
     @property
-    def ARQ_REDIS_SETTINGS(self):
+    def ARQ_REDIS_SETTINGS(self) -> RedisSettings:
         """从 REDIS_URL 派生 arq RedisSettings，仅替换 db。"""
-        from urllib.parse import urlparse
-
-        from arq.connections import RedisSettings
-
         u = urlparse(self.REDIS_URL)
         return RedisSettings(
             host=u.hostname or "localhost",
@@ -225,8 +196,8 @@ class Settings(BaseSettings):
         if self.DEBUG:
             raise ValueError("生产环境不能启用DEBUG模式")
 
-        if self.DB_ENGINE == "sqlite":
-            raise ValueError("生产环境建议使用PostgreSQL而非SQLite")
+        if self.DB_ENGINE != "mysql":
+            raise ValueError("生产环境必须使用MySQL")
 
         if "localhost" in self.CORS_ORIGINS:
             raise ValueError("生产环境不应允许localhost的CORS访问")
