@@ -53,6 +53,9 @@ def make_middlewares():
             methods=["GET", "POST", "PUT", "DELETE"],
             exclude_paths=[
                 "/api/v1/base/access_token",
+                # wxapi（BE-04）：小程序端请求不进后台审计日志——
+                # 避免 login 响应中的 token / wx code 落库，且匿名请求无操作人可归属
+                "/api/v1/wxapi",
                 "/docs",
                 "/openapi.json",
             ],

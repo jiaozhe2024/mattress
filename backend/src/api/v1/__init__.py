@@ -11,10 +11,14 @@ from .menus import menus_router
 from .roles import roles_router
 from .tasks import tasks_router
 from .users import users_router
+from .wxapi import wxapi_router
 
 v1_router = APIRouter()
 
 v1_router.include_router(base_router, prefix="/base")
+# wxapi（BE-04）：小程序端独立路由组，不挂 admin 的 DependAuth/DependPermisson，
+# 鉴权由路由组内部 wxapi JWT（core/wx_dependency.py）自理
+v1_router.include_router(wxapi_router, prefix="/wxapi")
 v1_router.include_router(users_router, prefix="/users", dependencies=[DependPermisson])
 v1_router.include_router(roles_router, prefix="/role", dependencies=[DependPermisson])
 v1_router.include_router(menus_router, prefix="/menu", dependencies=[DependPermisson])
