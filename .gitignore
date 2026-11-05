@@ -12,3 +12,6 @@ __pycache__/
 # 构建产物
 miniprogram/dist/
 backend/admin/dist/
+
+# e2e 自动化截图（生成物）
+docs/exec-plans/screenshots/
