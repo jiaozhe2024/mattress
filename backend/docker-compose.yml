@@ -22,6 +22,12 @@ services:
     build:
       context: ./ruoyi-fastapi-backend
       dockerfile: Dockerfile.my
+      args:
+        # 上游默认清华源在本机网络 403，改用阿里云镜像（可用环境变量 PIP_INDEX_URL 覆盖）
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
+        # Dockerfile 默认 3.10：sqlglotc 30.23.0 仅发布 cp311+ 预编译轮，3.10 会退回源码编译且核心不匹配导致启动报错。
+        # 改用 3.12（项目 CI 明确使用 3.12）。可用环境变量 PYTHON_VERSION 覆盖。
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.12}
     image: ruoyi-backend-my:latest
     container_name: ruoyi-backend-my
     environment:
