@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import NaiveDatetime
-from sqlalchemy import BigInteger, Text
+from sqlalchemy import BigInteger, Integer, Text
 from sqlalchemy.dialects import mysql
 from sqlmodel import Field, SQLModel
 
@@ -10,6 +10,10 @@ from settings import settings
 
 # MySQL 用 LONGTEXT 存富文本；sqlite（测试）回落为 TEXT
 LongText = Text().with_variant(mysql.LONGTEXT(), "mysql")
+
+# MySQL 用 BIGINT 主键（aaa.md §5）；sqlite 仅 INTEGER PRIMARY KEY 支持自增，
+# 测试方言回落为 Integer，否则 INSERT 报 NOT NULL constraint failed: id
+BigIntPK = BigInteger().with_variant(Integer(), "sqlite")
 
 
 class BaseModel(SQLModel):
@@ -60,7 +64,7 @@ class BusinessBaseModel(BaseModel):
     """
 
     id: int | None = Field(
-        default=None, primary_key=True, index=True, sa_type=BigInteger
+        default=None, primary_key=True, index=True, sa_type=BigIntPK
     )
 
 

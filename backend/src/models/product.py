@@ -24,7 +24,7 @@ class GinProductCategory(BusinessBaseModel, TimestampMixin, table=True):
     status: int = Field(default=1, index=True, description="启用状态：0禁用 1启用")
 
     products: list["GinProduct"] = Relationship(
-        back_populates="category", sa_relationship_kwargs={"lazy": "noload"}
+        back_populates="category", sa_relationship_kwargs={"lazy": "raise"}
     )
 
 
@@ -64,5 +64,5 @@ class GinProduct(BusinessBaseModel, TimestampMixin, table=True):
     status: int = Field(default=1, index=True, description="上下架状态：0下架 1上架")
 
     category: GinProductCategory | None = Relationship(
-        back_populates="products", sa_relationship_kwargs={"lazy": "noload"}
+        back_populates="products", sa_relationship_kwargs={"lazy": "selectin"}
     )
