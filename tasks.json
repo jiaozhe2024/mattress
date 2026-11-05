@@ -67,7 +67,7 @@
       "id": "BE-06",
       "title": "wxapi 方案 CRUD + 快照 + 分享（V2.0 核心）",
       "description": "POST /wxapi/schemes（title 必填 1-100 字、product_ids[]、remark 选填）：创建方案主记录 + 为每个产品生成 JSON 快照写 gin_scheme_product.product_snapshot（含 id/name/model/main_image/spec/sleep_feel/detail_content 等展示字段，aaa.md §4.3.1），产品不存在 404；PUT /wxapi/schemes/{id}（仅创建者，重新生成快照）；GET /wxapi/schemes（当前用户方案，create_time desc 分页）；GET /wxapi/schemes/{id}（本人，含快照列表）；GET /wxapi/schemes/{id}/public（免登录只读回显，不返回创建者敏感信息）；DELETE /wxapi/schemes/{id}（软删除，仅创建者）；POST /wxapi/schemes/{id}/share（分享计数 +1）。越权一律 403。删除方案后 gin_scheme_item 级联清理。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "BE-04",
       "verify": "pytest：创建方案返回 id 且快照字段完整；产品更新后再查旧方案仍为快照值（快照不可变）；非 owner 调 PUT/DELETE 403；public 接口免登录 200 且无敏感字段；share 后计数 +1；软删除后列表不出现、public 404；curl 完整闭环（建→查→分享→删）",
