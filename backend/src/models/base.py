@@ -2,9 +2,14 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import NaiveDatetime
+from sqlalchemy import BigInteger, Text
+from sqlalchemy.dialects import mysql
 from sqlmodel import Field, SQLModel
 
 from settings import settings
+
+# MySQL 用 LONGTEXT 存富文本；sqlite（测试）回落为 TEXT
+LongText = Text().with_variant(mysql.LONGTEXT(), "mysql")
 
 
 class BaseModel(SQLModel):
@@ -45,6 +50,18 @@ class BaseModel(SQLModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+
+class BusinessBaseModel(BaseModel):
+    """gin_/wx_ 业务表基类。
+
+    与基座 BaseModel 的区别：主键按 aaa.md §5 DDL 使用 BIGINT
+    （基座表保持 INT 原样，不受影响）。
+    """
+
+    id: int | None = Field(
+        default=None, primary_key=True, index=True, sa_type=BigInteger
+    )
 
 
 class UUIDModel(SQLModel):
