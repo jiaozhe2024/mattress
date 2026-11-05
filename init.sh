@@ -30,7 +30,7 @@ else
 fi
 
 echo "[4/5] 小程序"
-[ -f miniprogram/app.json ] && echo "  miniprogram/app.json 存在" || echo "  WARN: miniprogram/ 尚未初始化（先执行任务 MP-01）"
+[ -f miniprogram/package.json ] && echo "  miniprogram/package.json 存在" || echo "  WARN: miniprogram/ 尚未初始化（先执行任务 MP-01）"
 
 echo "[5/5] tasks.json 格式"
 python3 -m json.tool tasks.json >/dev/null && echo "  JSON 合法" || { echo "FAIL: tasks.json 格式错误"; exit 1; }

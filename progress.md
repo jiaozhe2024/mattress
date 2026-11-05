@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-11-05 V2.0 全量重建（规格书驱动）
+- 用户提供 aaa.md（技术需求规格说明书 V2.0）：产品转向 **B 端导购/经销商赋能工具**（产品展示 → 方案生成 → 微信分享），明确不做 C 端交易
+- aaa.md 修正：小程序端选型由「微信原生+Vant Weapp」改回 **Uni-app+Vue3+TS+Pinia**（与仓库既有定稿一致，文档内部 Pinia/原生矛盾已消除）；同步修正 MySQL 理由（去 RuoYi 引用）、架构图、Admin 理由
+- 全量重建地基（以 aaa.md V2.0 为唯一依据）：
+  - 新增 docs/product-specs/PRD-v2.0.md（提炼规格）；PRD-v1.1 标记已废弃
+  - TECH_DECISIONS / ARCHITECTURE / CONVENTIONS / QUALITY / business-solution / backlog / design-brief / figma-handoff 全部 V2.0 化
+  - AGENTS.md 更新（权威规格=aaa.md；核心约定新增 方案快照 条款；去内容社区）
+  - tasks.json 重排：数据模型 8 表（gin_product_category/gin_product/wx_user/gin_scheme/gin_scheme_product/gin_banner/gin_article/gin_brand_info）取代 V1.1 的 11 表；NG-01/BE-02~09 + MP-01~06 对齐 V2.0 页面（3 Tab 首页/产品/我的 + 方案中心编辑/列表/预览）；MP-02~06 blocked 等用户确认 jp/ 参考图
+- 关键模型变更：商品无独立 SKU 表（规格内嵌字段）；「方案 Scheme + 快照 JSON」取代「选品单 wishlist」；移除内容社区（视频/内容带货不做）
+- 下次从这里开始：派 CC 执行 NG-01（后端底座）与 MP-01（小程序骨架，不依赖设计稿）；BE-02 阻塞链 NG-01→BE-02→BE-04/05→BE-06→BE-07
+
 ## 2026-11-05 技术选型重定稿 + 旧基座清理 + 任务重排
 - 决策：后端 FastAPI + **SQLModel** + MySQL8 + Redis（参考 JiayuXu0/FastAPI-Template 的分层/RBAC/JWT/arq，ORM 层自建，模板官方 Tortoise+PG 不采用）；管理后台 Vue3+Element Plus+Vite 由 CC 生成；小程序改 Uni-app+Vue3+TS+Pinia。依据：仓库根 技术选型.md
 - 清理：backend/ RuoYi-FastAPI 旧基座 git 全量移除；ruoyi-* 四容器 + mysql/redis 卷 `docker compose down --volumes` 清空；backend/ 留占位 README
