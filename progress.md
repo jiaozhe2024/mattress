@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-11-05 BE-04 wxapi 登录与用户体系（submitted，待验收）
+- 新建 /api/v1/wxapi/* 路由组（与 admin 路由组物理隔离）：POST /auth/login（wx.login code → code2session → 查/建 wx_user → 7 天 token 对）、POST /auth/refresh、GET /users/me
+- 独立 JWT 体系三重隔离：WX_JWT_SECRET_KEY 独立密钥 + payload（wx_user_id/scope=wxapi）+ token_type（wx_access/wx_refresh）；admin token 打 wxapi 与 wx token 打 admin 均 401（pytest+curl 双向实测）
+- code2session 用 httpx.AsyncClient（异步红线），dev/测试 WX_CODE2SESSION_MOCK=true 固定 openid=mock_openid_wxtest_001，code=invalid_code 模拟 40029→401；生产校验强制关 mock + 配 WX_APPID/WX_SECRET + 覆盖密钥
+- 分表红线：wx_user 仓储不 import models.admin；curl 实测登录只写 wx_user，后台 user 表计数不变；并发首登靠 openid 唯一索引 IntegrityError 回查兜底
+- 验收：tests/test_wxapi_auth.py 12 用例绿，全量 50 passed/1 skipped；容器重建后 curl 7 项全过（详见 sprint-output）
+- 遗留风险：mock 单 openid（BE-06 多用户需 repository 造数）；7 天 token 无吊销（禁用靠每请求 status 校验兜底）；/wxapi/auth/login 未挂限流
+- 详情 docs/exec-plans/active/BE-04-sprint-output.md；tasks.json BE-04 → submitted；下次：Hermes 复跑验收，通过后可派 BE-05/BE-06（BE-06 blocked_by BE-04）
+
 ## 2026-11-05 BE-03 Admin 前端工程骨架（submitted，待验收）
 - 新建 backend/admin/（Vite+Vue3+TS+Element Plus，无模板 vendor）：登录页对接基座 JWT、布局（侧边菜单+顶栏+面包屑）、路由守卫（无 token/401 跳登录）、RBAC 菜单级过滤（超管全放行；普通用户按角色 GET /role/authorized 菜单并集）、axios 统一封装（信封拆包/Bearer/错误 toast）
 - 契约核验：登录成功 code200 含 access/refresh token；错密码 HTTP 400「密码错误!」；无效 token 401；dev 端口固定 8080（后端 CORS 白名单 3000/8080，3000 被占用）
