@@ -1,7 +1,7 @@
 {
   "project": "mattress-ux（床垫选品方案小程序 V2.0）",
   "last_updated": "2026-11-05",
-  "current_focus": "BE-05（wxapi 产品/首页聚合/资讯/品牌接口）验收 approved 置 done；下一步派 BE-06（方案 CRUD+快照+分享，blocked_by BE-04/BE-05 已满足）；MP-02~06 等 jp/ 参考图确认",
+  "current_focus": "MVP 范围调整（海报 BE-07→blocked 延 V2.1）。三 CC 并行：BE-06（方案 CRUD+快照+分享 pid 23154）、BE-08（Admin 内容 CRUD，含后端 API+前端 pid 24255）、MP-02（小程序首页 pid 24277，jp/ 参考图已就绪解锁）。完成后逐个验收；BE-09/MP-03~06 随后",
   "tasks": [
     {
       "id": "NG-01",
