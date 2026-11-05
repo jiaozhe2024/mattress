@@ -108,6 +108,25 @@ class Settings(BaseSettings):
         os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")
     )
 
+    # ---- 微信小程序（wxapi，BE-04）----
+    # 与 admin JWT 完全隔离：独立签名密钥 + 独立 payload（scope=wxapi, wx_user_id）
+    WX_APPID: str = os.getenv("WX_APPID", "")
+    WX_SECRET: str = os.getenv("WX_SECRET", "")
+    # dev/自动化环境必须 mock code2session（核心约定 #4）；生产必须显式置 false
+    WX_CODE2SESSION_MOCK: bool = True
+    WX_CODE2SESSION_URL: str = "https://api.weixin.qq.com/sns/jscode2session"
+    # mock 模式下：任意非空 code → 固定测试 openid；code == WX_MOCK_INVALID_CODE → 401
+    WX_MOCK_OPENID: str = "mock_openid_wxtest_001"
+    WX_MOCK_INVALID_CODE: str = "invalid_code"
+    # wxapi 独立 JWT 密钥（生产环境必须通过 env 覆盖，_validate_production_config 校验）
+    WX_JWT_SECRET_KEY: str = (
+        os.getenv("WX_JWT_SECRET_KEY")
+        or "wxapi_dev_only_secret_key_override_in_prod_32chars"
+    )
+    WX_JWT_ALGORITHM: str = "HS256"
+    WX_ACCESS_TOKEN_EXPIRE_DAYS: int = 7
+    WX_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+
     # arq 任务队列
     ARQ_REDIS_DB: int = int(os.getenv("ARQ_REDIS_DB", "1"))
     ARQ_QUEUE_NAME: str = os.getenv("ARQ_QUEUE_NAME", "arq:queue")
@@ -170,6 +189,16 @@ class Settings(BaseSettings):
             raise ValueError("SECRET_KEY长度至少32字符")
         return v
 
+    @field_validator("WX_JWT_SECRET_KEY")
+    @classmethod
+    def validate_wx_jwt_secret_key(cls, v):
+        """空值回落开发默认密钥（生产由 _validate_production_config 拦截）；非空必须足够长。"""
+        if not v:
+            return "wxapi_dev_only_secret_key_override_in_prod_32chars"
+        if len(v) < 32:
+            raise ValueError("WX_JWT_SECRET_KEY长度至少32字符")
+        return v
+
     @field_validator("SWAGGER_UI_PASSWORD")
     @classmethod
     def validate_swagger_password(cls, v):
@@ -201,6 +230,15 @@ class Settings(BaseSettings):
 
         if "localhost" in self.CORS_ORIGINS:
             raise ValueError("生产环境不应允许localhost的CORS访问")
+
+        # wxapi（BE-04）：生产禁止 mock code2session，必须配置真实 appid/secret，
+        # 且 wxapi JWT 密钥必须覆盖开发默认值
+        if self.WX_CODE2SESSION_MOCK:
+            raise ValueError("生产环境必须关闭 WX_CODE2SESSION_MOCK")
+        if not self.WX_APPID or not self.WX_SECRET:
+            raise ValueError("生产环境必须配置 WX_APPID / WX_SECRET")
+        if self.WX_JWT_SECRET_KEY.startswith("wxapi_dev_only"):
+            raise ValueError("生产环境必须通过 env 覆盖 WX_JWT_SECRET_KEY")
 
 
 settings = Settings()
