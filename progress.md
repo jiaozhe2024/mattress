@@ -4,6 +4,13 @@
 
 ---
 
+## 2026-11-05 BE-03 Admin 前端工程骨架（submitted，待验收）
+- 新建 backend/admin/（Vite+Vue3+TS+Element Plus，无模板 vendor）：登录页对接基座 JWT、布局（侧边菜单+顶栏+面包屑）、路由守卫（无 token/401 跳登录）、RBAC 菜单级过滤（超管全放行；普通用户按角色 GET /role/authorized 菜单并集）、axios 统一封装（信封拆包/Bearer/错误 toast）
+- 契约核验：登录成功 code200 含 access/refresh token；错密码 HTTP 400「密码错误!」；无效 token 401；dev 端口固定 8080（后端 CORS 白名单 3000/8080，3000 被占用）
+- 验收：npm run build 绿；Playwright 浏览器 10 项全 PASS（无 token 跳转/错密码 toast/登录进布局/侧边栏面包屑/无效 token 清 token 回登录）；截图 /tmp/be03_dashboard.png
+- 契约缺口记录：基座 /base/usermenu 被注释未启用（前端改用 role/authorized 求并集）；refresh 自动续签未做；token localStorage 明文（技术债）
+- 详情 docs/exec-plans/active/BE-03-sprint-output.md；tasks.json BE-03 → submitted；下次：Hermes 复跑验收后派 BE-08/BE-09（依赖 BE-02）
+
 ## 2026-11-05 V2.0 全量重建（规格书驱动）
 - 用户提供 aaa.md（技术需求规格说明书 V2.0）：产品转向 **B 端导购/经销商赋能工具**（产品展示 → 方案生成 → 微信分享），明确不做 C 端交易
 - aaa.md 修正：小程序端选型由「微信原生+Vant Weapp」改回 **Uni-app+Vue3+TS+Pinia**（与仓库既有定稿一致，文档内部 Pinia/原生矛盾已消除）；同步修正 MySQL 理由（去 RuoYi 引用）、架构图、Admin 理由
