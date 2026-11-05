@@ -6,6 +6,7 @@ gin_scheme_product.product_snapshot，历史方案不随产品更新变化。
 级联：方案删除时快照行随 DB 级联删除（ON DELETE CASCADE）+ ORM delete-orphan。
 """
 
+from pydantic import NaiveDatetime
 from sqlalchemy import JSON, BigInteger, Column, ForeignKey, Text
 from sqlmodel import Field, Relationship
 
@@ -29,6 +30,11 @@ class GinScheme(BusinessBaseModel, TimestampMixin, table=True):
     )
     product_count: int = Field(default=0, description="产品数量")
     share_count: int = Field(default=0, description="分享次数")
+    # BE-06 软删除：NULL=正常，非空=删除时刻。软删除后列表不可见、public 404，
+    # 快照行保留（管理员数据追溯，见 BE-09）。
+    deleted_at: NaiveDatetime | None = Field(
+        default=None, index=True, description="软删除时间（NULL=未删除）"
+    )
 
     products: list["GinSchemeProduct"] = Relationship(
         back_populates="scheme",

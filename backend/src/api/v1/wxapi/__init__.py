@@ -9,6 +9,7 @@ from fastapi import APIRouter
 
 from .auth import router as auth_router
 from .content import router as content_router
+from .schemes import router as schemes_router
 from .users import router as users_router
 
 wxapi_router = APIRouter()
@@ -16,5 +17,7 @@ wxapi_router.include_router(auth_router, prefix="/auth", tags=["wxapi-认证"])
 wxapi_router.include_router(users_router, prefix="/users", tags=["wxapi-用户"])
 # BE-05：内容只读接口（home/categories/products/articles/brand），全部匿名可访问
 wxapi_router.include_router(content_router, tags=["wxapi-内容"])
+# BE-06：方案 CRUD + 快照 + 分享（除 /public 外均需 wxapi JWT）
+wxapi_router.include_router(schemes_router, prefix="/schemes", tags=["wxapi-方案"])
 
 __all__ = ["wxapi_router"]
