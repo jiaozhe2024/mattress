@@ -87,3 +87,26 @@ admin_user_count=1        # 仅 seed 的 admin，wx 登录零写入后台用户�
 - 未实现产品/首页/banner/资讯/品牌接口（BE-05 范围）
 - 未动 backend/admin/（BE-03 交付物）、未动 wx_user 模型、未动 admin JWT 体系
 - tasks.json BE-04 → submitted（由 Hermes 验收后置 done）
+
+---
+
+## Evaluator 复跑评审（Hermes，2026-11-05）
+
+独立复跑（后端容器四件套 healthy，localhost:8000）：
+
+| # | verify 项 | 命令 | 结果 |
+|---|---|---|---|
+| 1 | pytest 冒烟 | `.venv/bin/python -m pytest tests/ --tb=no -q` | exit 0；test_wxapi_auth.py 12/12 通过（`............` [100%]） |
+| 2 | mock 登录返 token | `POST /wxapi/auth/login (code=hermes_eval_1)` | 200 `{code:200,data:{access_token:eyJ...}}`，token_len=180 |
+| 3 | 非法 code 401 | `POST /wxapi/auth/login (code=invalid_code)` | HTTP 401 ✓ |
+| 4 | users/me 200 | `GET /wxapi/users/me` + Bearer | 200 `{id:1, openid:"mock_openid_wxtest_001", status:1, last_login_at}` ✓ |
+| 5a | wx token 打 admin 端点 | `GET /base/userinfo` + wx token | 401 ✓（互不通用） |
+| 5b | admin token 打 wxapi 端点 | `GET /wxapi/users/me` + admin token | 401 ✓（互不通用） |
+| 6 | 二次登录不重复建用户 | 同一 session 内 4 次登录（hermes_eval_1/hermes_eval_2×2）+ MySQL `SELECT COUNT(*) FROM wx_user` | **wx_user=1 行**（4 次登录仅 1 用户，幂等成立） |
+| 7 | wx_user 无后台混写 | MySQL `SELECT COUNT(*) FROM user` | **1 行**（仅 seed admin，wx 登录零写入后台表） |
+
+注：CC curl 返回信封内还有 `data.id`/`data.user_id`，我探针误取顶层 `id` 报 KeyError——探针问题非代码问题，改用表计数验证等价成立。
+
+CC 自述输出（登录/去重/401/users.me/双向隔离/分表 7 项）+ Hermes 独立复跑 7 项，全部一致。
+
+结论：**approved**。BE-04 置 done，BE-05（wxapi 产品/首页聚合/资讯/品牌接口，blocked_by BE-02 已满足）解锁。遗留风险（单 mock openid、无 token 吊销、login 无限流、session_key 未持久化）已记录在上文第三节，均可接受，BE-06 前如需多用户方案用例再考虑扩展 mock。

@@ -1,7 +1,7 @@
 {
   "project": "mattress-ux（床垫选品方案小程序 V2.0）",
   "last_updated": "2026-11-05",
-  "current_focus": "BE-02（后端模型+迁移+seed）与 BE-03（Admin 骨架：登录/布局/守卫/RBAC/axios）均验收 approved 置 done；下一步解锁 BE-04（wxapi 登录）/BE-05（产品/首页接口，blocked_by BE-02 已满足）；MP-02~06 等 jp/ 参考图确认",
+  "current_focus": "BE-04（wxapi 登录+用户体系）验收 approved 置 done；下一步派 BE-05（wxapi 产品/首页聚合/资讯/品牌接口，blocked_by BE-02 已满足）；MP-02~06 等 jp/ 参考图确认",
   "tasks": [
     {
       "id": "NG-01",
@@ -47,7 +47,7 @@
       "id": "BE-04",
       "title": "wxapi 登录与用户体系",
       "description": "建 /wxapi/* 路由组与独立 JWT 体系（与 admin JWT 隔离）。实现 POST /wxapi/auth/login：接收 wx.login code → code2session（dev 环境 mock 固定测试 openid，生产读配置，用 httpx.AsyncClient）→ 查/建 wx_user → 签发 token（7 天，支持刷新）。GET /wxapi/users/me 返回当前用户基础信息。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "BE-02",
       "verify": "pytest：mock code2session 下登录返回 token、二次登录不重复建用户、非法 code 返回 401；curl 用 token 调 /users/me 200；确认 wx_user 无后台用户表混写；JWT 与 admin 体系互不通用",
