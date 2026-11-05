@@ -23,17 +23,15 @@ async def list_menu(
     page_size: int = Query(10, description="每页数量"),
 ):
     async def get_menu_with_children(menu_id: int):
-        menu = await menu_repository.model.get(id=menu_id)
-        menu_dict = await menu.to_dict()
-        child_menus = await menu_repository.model.filter(parent_id=menu_id).order_by(
-            "order"
-        )
+        menu = await menu_repository.get(id=menu_id)
+        menu_dict = menu.to_dict()
+        child_menus = await menu_repository.get_by_parent_id(menu_id)
         menu_dict["children"] = [
             await get_menu_with_children(child.id) for child in child_menus
         ]
         return menu_dict
 
-    parent_menus = await menu_repository.model.filter(parent_id=0).order_by("order")
+    parent_menus = await menu_repository.get_by_parent_id(0)
     res_menu = [await get_menu_with_children(menu.id) for menu in parent_menus]
     result = SuccessExtra(
         data=res_menu, total=len(res_menu), page=page, page_size=page_size
@@ -46,7 +44,7 @@ async def get_menu(
     menu_id: int = Query(..., description="菜单id"),
 ):
     result_data = await menu_repository.get(id=menu_id)
-    result = Success(data=result_data)
+    result = Success(data=result_data.to_dict())
     return json.loads(result.body)
 
 
@@ -72,7 +70,7 @@ async def update_menu(
 async def delete_menu(
     id: int = Query(..., description="菜单id"),
 ):
-    child_menu_count = await menu_repository.model.filter(parent_id=id).count()
+    child_menu_count = await menu_repository.count_by_parent_id(id)
     if child_menu_count > 0:
         result = Fail(msg="Cannot delete a menu with child menus")
         return json.loads(result.body)

@@ -3,8 +3,8 @@ import logging
 
 from fastapi import APIRouter, Query
 from fastapi.exceptions import HTTPException
-from tortoise.expressions import Q
 
+from models.admin import Role
 from repositories import role_repository
 from schemas.base import Success, SuccessExtra
 from schemas.response import (
@@ -26,13 +26,11 @@ async def list_role(
     page_size: int = Query(10, description="每页数量"),
     role_name: str = Query("", description="角色名称，用于查询"),
 ):
-    q = Q()
-    if role_name:
-        q = Q(name__contains=role_name)
+    where = [Role.name.contains(role_name)] if role_name else []
     total, role_objs = await role_repository.list(
-        page=page, page_size=page_size, search=q
+        page=page, page_size=page_size, where=where
     )
-    data = [await obj.to_dict() for obj in role_objs]
+    data = [obj.to_dict() for obj in role_objs]
     result = SuccessExtra(data=data, total=total, page=page, page_size=page_size)
     return json.loads(result.body)
 
@@ -42,7 +40,7 @@ async def get_role(
     role_id: int = Query(..., description="角色ID"),
 ):
     role_obj = await role_repository.get(id=role_id)
-    result = Success(data=await role_obj.to_dict())
+    result = Success(data=role_obj.to_dict())
     return json.loads(result.body)
 
 
@@ -79,8 +77,8 @@ async def delete_role(
     "/authorized", summary="查看角色权限", response_model=RoleAuthorizedResponse
 )
 async def get_role_authorized(id: int = Query(..., description="角色ID")):
-    role_obj = await role_repository.get(id=id)
-    data = await role_obj.to_dict(m2m=True)
+    role_obj = await role_repository.get_with_relations(id)
+    data = role_obj.to_dict(m2m=True)
     result = Success(data=data)
     return json.loads(result.body)
 

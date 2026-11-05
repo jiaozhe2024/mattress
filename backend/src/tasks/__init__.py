@@ -2,7 +2,7 @@
 
 - queue.py: web 进程使用的 ArqRedis pool 与 enqueue_task helper
 - worker.py: WorkerSettings（独立 worker 进程通过 `python -m arq tasks.worker.WorkerSettings` 启动）
-- hooks.py: worker 进程的 Tortoise / cache_manager 初始化
+- hooks.py: worker 进程的 DB 预热 / cache_manager 初始化
 - jobs/: 任务函数集中目录
 """
 

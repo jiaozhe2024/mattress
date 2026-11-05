@@ -1,8 +1,8 @@
 import json
 
 from fastapi import APIRouter, Query
-from tortoise.expressions import Q
 
+from models.admin import Api
 from repositories.api import api_repository
 from schemas import Success, SuccessExtra
 from schemas.apis import ApiCreate, ApiUpdate
@@ -20,17 +20,17 @@ async def list_api(
     summary: str = Query(None, description="API简介"),
     tags: str = Query(None, description="API模块"),
 ):
-    q = Q()
+    where = []
     if path:
-        q &= Q(path__contains=path)
+        where.append(Api.path.contains(path))
     if summary:
-        q &= Q(summary__contains=summary)
+        where.append(Api.summary.contains(summary))
     if tags:
-        q &= Q(tags__contains=tags)
+        where.append(Api.tags.contains(tags))
     total, api_objs = await api_repository.list(
-        page=page, page_size=page_size, search=q, order=["tags", "id"]
+        page=page, page_size=page_size, where=where, order=[Api.tags, Api.id]
     )
-    data = [await obj.to_dict() for obj in api_objs]
+    data = [obj.to_dict() for obj in api_objs]
     result = SuccessExtra(data=data, total=total, page=page, page_size=page_size)
     return json.loads(result.body)
 
@@ -40,7 +40,7 @@ async def get_api(
     id: int = Query(..., description="Api"),
 ):
     api_obj = await api_repository.get(id=id)
-    data = await api_obj.to_dict()
+    data = api_obj.to_dict()
     result = Success(data=data)
     return json.loads(result.body)
 

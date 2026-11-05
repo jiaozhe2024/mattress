@@ -24,7 +24,7 @@ async def get_dept(
     id: int = Query(..., description="部门ID"),
 ):
     dept_obj = await dept_repository.get(id=id)
-    data = await dept_obj.to_dict()
+    data = dept_obj.to_dict()
     result = Success(data=data)
     return json.loads(result.body)
 

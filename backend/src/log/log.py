@@ -159,7 +159,7 @@ class LoggingConfig:
         )
 
         if self.environment == "testing":
-            for logger_name in ("aiosqlite", "asyncio", "httpx", "tortoise"):
+            for logger_name in ("aiosqlite", "asyncio", "httpx", "sqlalchemy.engine"):
                 logging.getLogger(logger_name).setLevel(logging.WARNING)
 
         for logger_name in (

@@ -2,13 +2,16 @@ import json
 from datetime import datetime
 
 from fastapi import APIRouter, Query
-from tortoise.expressions import Q
 
+from core.crud import CRUDBase
 from models.admin import AuditLog
 from schemas import SuccessExtra
 from schemas.response import AuditLogListResponse
 
 router = APIRouter()
+
+# AuditLog 只读列表查询，直接复用 CRUDBase（无需独立 Repository）
+audit_log_crud: CRUDBase = CRUDBase(AuditLog)
 
 
 @router.get("/list", summary="查看操作日志", response_model=AuditLogListResponse)
@@ -23,31 +26,31 @@ async def get_audit_log_list(
     start_time: datetime = Query("", description="开始时间"),
     end_time: datetime = Query("", description="结束时间"),
 ):
-    q = Q()
+    where = []
     if username:
-        q &= Q(username__icontains=username)
+        where.append(AuditLog.username.icontains(username))
     if module:
-        q &= Q(module__icontains=module)
+        where.append(AuditLog.module.icontains(module))
     if method:
-        q &= Q(method__icontains=method)
+        where.append(AuditLog.method.icontains(method))
     if summary:
-        q &= Q(summary__icontains=summary)
+        where.append(AuditLog.summary.icontains(summary))
     if status:
-        q &= Q(status=status)
+        where.append(AuditLog.status == status)
     if start_time and end_time:
-        q &= Q(created_at__range=[start_time, end_time])
+        where.append(AuditLog.created_at >= start_time)
+        where.append(AuditLog.created_at <= end_time)
     elif start_time:
-        q &= Q(created_at__gte=start_time)
+        where.append(AuditLog.created_at >= start_time)
     elif end_time:
-        q &= Q(created_at__lte=end_time)
+        where.append(AuditLog.created_at <= end_time)
 
-    audit_log_objs = (
-        await AuditLog.filter(q)
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .order_by("-created_at")
+    total, audit_log_objs = await audit_log_crud.list(
+        page=page,
+        page_size=page_size,
+        where=where,
+        order=[AuditLog.created_at.desc()],
     )
-    total = await AuditLog.filter(q).count()
-    data = [await audit_log.to_dict() for audit_log in audit_log_objs]
+    data = [audit_log.to_dict() for audit_log in audit_log_objs]
     result = SuccessExtra(data=data, total=total, page=page, page_size=page_size)
     return json.loads(result.body)

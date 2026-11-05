@@ -128,7 +128,7 @@ async def refresh_access_token(request: Request, refresh_request: RefreshTokenRe
 async def get_userinfo(current_user: User = DependAuth):
     user_id = CTX_USER_ID.get()
     user_obj = await user_repository.get(id=user_id)
-    user_dict = await user_obj.to_dict()
+    user_dict = user_obj.to_dict(m2m=True, exclude_fields=["password"])
     return Success(data=user_dict)
 
 
@@ -141,10 +141,9 @@ async def health_check():
 
     db_ok = True
     try:
-        from tortoise import Tortoise
+        from core.db import check_db
 
-        conn = Tortoise.get_connection("default")
-        await conn.execute_query("SELECT 1")
+        await check_db()
     except Exception:
         db_ok = False
     db_up.set(1 if db_ok else 0)

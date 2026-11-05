@@ -14,6 +14,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from core.dependency import AuthControl
 from log.context import LogContext
+from core.db import db_session
 from models.admin import AuditLog, User
 
 from .bgtask import BgTasks
@@ -238,7 +239,8 @@ class HttpAuditLogMiddleware(BaseHTTPMiddleware):
 
             data["request_args"] = request.state.request_args
             data["response_body"] = await self.get_response_body(request, response)
-            await AuditLog.create(**data)
+            async with db_session() as session:
+                session.add(AuditLog(**data))
 
         return response
 
