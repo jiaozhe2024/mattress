@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import { PRODUCT_LIST_TAB, SELECTION_PAGE } from "@/config";
 import { useSelectionStore } from "@/stores/useSelectionStore";
 
 const store = useSelectionStore();
 
 function goSelection(): void {
+  // 目标页 /pages/scheme/selection 由 MP-05 落地；此前回退到产品列表 tab（选品发生地）
   uni.navigateTo({
-    url: "/pages/scheme/selection",
+    url: SELECTION_PAGE,
     fail: () => {
-      uni.showToast({ title: "选品页建设中", icon: "none" });
+      uni.switchTab({ url: PRODUCT_LIST_TAB });
     },
   });
 }
@@ -34,14 +36,14 @@ function goSelection(): void {
   width: 56rpx;
   height: 56rpx;
   border-radius: 50%;
-  background-color: #d4a574;
+  background-color: #f7c400;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2);
 }
 
 .fab-label {
   font-size: 14rpx;
   line-height: 1;
-  color: #ffffff;
+  color: #1a2260;
 }
 
 .fab-badge {
@@ -53,7 +55,7 @@ function goSelection(): void {
   padding: 0 4rpx;
   box-sizing: border-box;
   border-radius: 12rpx;
-  background-color: #e34d59;
+  background-color: #1a2260;
   color: #ffffff;
   font-size: 16rpx;
   line-height: 24rpx;
