@@ -1,7 +1,7 @@
 {
   "project": "mattress-ux（床垫选品方案小程序 V2.0）",
   "last_updated": "2026-11-05",
-  "current_focus": "BE-02（后端模型+迁移+seed，CC pid 9440）与 BE-03（Admin 前端骨架，CC pid 10531）双 CC 并行执行中（零文件交集已核对：BE-02 动 backend/src+DB_SCHEMA.md，BE-03 动 backend/admin/）；完成后 Hermes 逐个复跑验收；BE-04/BE-05 等 BE-02，MP-02~06 等 jp/ 参考图确认",
+  "current_focus": "BE-02 已验收 approved；BE-03（Admin 骨架）代码已提交待 Hermes 复跑验收；下一步解锁 BE-04（wxapi 登录）/BE-05（产品/首页接口）；MP-02~06 等 jp/ 参考图确认",
   "tasks": [
     {
       "id": "NG-01",
@@ -27,7 +27,7 @@
       "id": "BE-02",
       "title": "DB_SCHEMA.md + SQLModel 业务模型（V2.0：方案+快照）",
       "description": "按 aaa.md §5 / docs/product-specs/PRD-v2.0.md §7 在仓库根建 DB_SCHEMA.md，用 SQLModel 建 8 个业务模型：gin_product_category（name/icon/parent_id 预留/sort/status）、gin_product（category_id/name/model 唯一/slogan/spec/sleep_feel/main_image/detail_images JSON/real_images JSON/detail_content LONGTEXT/sort/status，无独立 SKU 表）、wx_user（openid 唯一索引/nickname/avatar/status/last_login_at）、gin_scheme（user_id/title/remark/product_count/share_count）、gin_scheme_product（scheme_id/product_id/product_snapshot JSON/sort，随方案级联删除）、gin_banner（image/jump_type 1~4/jump_value/sort/status）、gin_article（title/category 服务或资讯/cover/content 富文本/status）、gin_brand_info（单行配置：介绍/加盟电话/客服承诺 JSON/门店图）。gin_ 前缀，走 alembic 迁移。含 seed 演示数据：7 大分类（9M特制床垫/花筑手作/卷绵时代/小斑马/特制软床/抗菌软床/助眠枕头）、≥6 个产品（含详情图/实拍图/富文本）、2 条 banner（不同 jump_type）、2 篇资讯、1 条品牌信息。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "NG-01",
       "verify": "python -c 导入全部 models 无错；alembic 迁移后 SQL 里核对表清单=8 且全部 gin_/wx_ 前缀；seed 后 mysql 查询分类数=7、产品数≥6；wx_user.openid 唯一索引存在；pytest 冒烟通过",
@@ -37,7 +37,7 @@
       "id": "BE-03",
       "title": "Admin 前端工程骨架（Vue3 + Element Plus）",
       "description": "backend/admin/ 下建 Vite + Vue3 + TS + Element Plus 工程，不套模板，CC 基于基座 /docs Swagger 生成。本任务只做骨架：登录页（对接基座 admin JWT）、布局框架（侧边菜单+顶栏+面包屑）、路由守卫（token/401 跳登录）、RBAC 菜单级对接（按角色过滤菜单）、axios 封装（baseURL=/api/v1、统一错误提示）。业务 CRUD 页面留给 BE-08/BE-09。",
-      "status": "pending",
+      "status": "submitted",
       "priority": "high",
       "blocked_by": "NG-01",
       "verify": "npm run build 通过；npm run dev 起 dev server 登录成功进入布局页（curl 200 + 浏览器/截图验证登录跳转）；错误密码登录被拒；token 失效跳回登录页",
