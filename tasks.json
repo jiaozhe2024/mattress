@@ -107,7 +107,7 @@
       "id": "MP-01",
       "title": "小程序骨架（Uni-app + Vue3 + TS + Pinia，V2.0 三 Tab）",
       "description": "初始化 Uni-app (Vue3+TS) 工程（vite 模板，产物可被微信开发者工具打开）+ Pinia + 参考小兔鲜儿 (uniapp-shop-vue3-ts) 提取 request 封装（baseURL/token/统一错误/401 刷新重试，先查其 License）+ tabBar 三页占位：首页(pages/index)/产品(pages/product/list)/我的(pages/user)（aaa.md §3.1.1）+ 全局悬浮「选款」按钮组件（#D4A574 圆形 56rpx，显示 Pinia 已选数量角标，aaa.md §3.1.2）+ useSelectionStore（selectedProducts/currentSchemeId/addProduct/removeProduct/clearSelection）+ wx.login 静默登录链路（dev-mock）。不依赖设计稿（布局占位即可），先打通 automator 验收链路。",
-      "status": "submitted",
+      "status": "done",
       "priority": "high",
       "blocked_by": "",
       "verify": "npm run dev:mp-weixin 构建 0 报错；cli open 打开构建产物编译 0 报错；node scripts/e2e/skeleton.auto.js 输出 3 个 tab 截图且切换断言通过；useSelectionStore vitest 单测通过（add/remove/clear/去重）",
