@@ -1,7 +1,7 @@
 {
   "project": "mattress-ux（床垫选品方案小程序 V2.0）",
   "last_updated": "2026-11-05",
-  "current_focus": "NG-01 已验收通过（Evaluator=Hermes）；下一步派 BE-02（DB_SCHEMA+8 业务模型，blocked_by NG-01 已解除）；MP-02~06 等 jp/ 参考图确认",
+  "current_focus": "BE-02（后端模型+迁移+seed，CC pid 9440）与 BE-03（Admin 前端骨架，CC pid 10531）双 CC 并行执行中（零文件交集已核对：BE-02 动 backend/src+DB_SCHEMA.md，BE-03 动 backend/admin/）；完成后 Hermes 逐个复跑验收；BE-04/BE-05 等 BE-02，MP-02~06 等 jp/ 参考图确认",
   "tasks": [
     {
       "id": "NG-01",
