@@ -174,7 +174,7 @@ cython_debug/
 /logs/*.log
 /uploads/*
 !uploads/.gitkeep
-migrations/
+# BE-02: migrations/ 为 alembic 业务表迁移链交付物，必须入库（模板默认忽略已移除）
 *.sqlite3*
 
 # UV specific
