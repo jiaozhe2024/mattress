@@ -209,6 +209,108 @@ async def init_menus():
     logger.info("✅ 系统菜单初始化成功 - 菜单数量: 8")
 
 
+# BE-08：内容管理菜单（子菜单 path 为相对片段，与基座 init_menus 约定一致，
+# 前端 RBAC 过滤按 父子拼接归一化 比对 meta.rbacPath=/content/<path>）
+CONTENT_CHILD_MENUS: list[dict] = [
+    {
+        "name": "轮播图管理",
+        "path": "banner",
+        "order": 1,
+        "icon": "material-symbols:slideshow-outline",
+        "component": "/content/banner",
+    },
+    {
+        "name": "产品分类管理",
+        "path": "category",
+        "order": 2,
+        "icon": "material-symbols:category-outline",
+        "component": "/content/category",
+    },
+    {
+        "name": "产品管理",
+        "path": "product",
+        "order": 3,
+        "icon": "material-symbols:inventory-2-outline",
+        "component": "/content/product",
+    },
+    {
+        "name": "资讯与服务管理",
+        "path": "article",
+        "order": 4,
+        "icon": "material-symbols:article-outline",
+        "component": "/content/article",
+    },
+    {
+        "name": "品牌信息配置",
+        "path": "brand",
+        "order": 5,
+        "icon": "material-symbols:storefront-outline",
+        "component": "/content/brand",
+    },
+]
+
+
+async def init_content_menus():
+    """BE-08：内容管理菜单幂等补齐（init_menus 在已有库会整体跳过，须独立按 path 检查）。
+
+    同时把新增菜单增量绑定到「管理员」角色（RoleMenu），
+    保证非 superuser 的管理员角色也能通过菜单级 RBAC 看到内容管理。
+    """
+    async with db_session() as session:
+        catalog = await session.scalar(select(Menu).where(Menu.path == "/content"))
+        if catalog is None:
+            catalog = Menu(
+                menu_type=MenuType.CATALOG,
+                name="内容管理",
+                path="/content",
+                order=3,
+                parent_id=0,
+                icon="carbon:content-delivery-network",
+                is_hidden=False,
+                component="Layout",
+                keepalive=False,
+                redirect="/content/banner",
+            )
+            session.add(catalog)
+            await session.flush()
+
+        content_menus: list[Menu] = [catalog]
+        for item in CONTENT_CHILD_MENUS:
+            child = await session.scalar(
+                select(Menu).where(
+                    Menu.path == item["path"], Menu.parent_id == catalog.id
+                )
+            )
+            if child is None:
+                child = Menu(
+                    menu_type=MenuType.MENU,
+                    parent_id=catalog.id,
+                    is_hidden=False,
+                    keepalive=False,
+                    **item,
+                )
+                session.add(child)
+                await session.flush()
+            content_menus.append(child)
+
+        # 增量绑定「管理员」角色（首装库由 init_roles 全量绑定，这里覆盖升级路径）
+        admin_role = await session.scalar(select(Role).where(Role.name == "管理员"))
+        if admin_role is not None:
+            bound_ids = set(
+                (
+                    await session.scalars(
+                        select(RoleMenu.menu_id).where(
+                            RoleMenu.role_id == admin_role.id
+                        )
+                    )
+                ).all()
+            )
+            for menu in content_menus:
+                if menu.id not in bound_ids:
+                    session.add(RoleMenu(role_id=admin_role.id, menu_id=menu.id))
+    logger.info("✅ 内容管理菜单就绪 - /content + 5 个子菜单")
+
+
 async def init_apis():
     """每次启动同步 API 表与路由；若有增删则刷新管理员角色的 API 关联。
 
@@ -290,6 +392,7 @@ async def init_data():
     logger.info("🔄 初始化基础数据...")
     await init_superuser()
     await init_menus()
+    await init_content_menus()
     await init_apis()
     logger.info("✅ 基础数据初始化完成")
 
