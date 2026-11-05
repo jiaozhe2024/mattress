@@ -101,7 +101,23 @@ HTTP:400
 - 经验推断：`role/authorized` 作为普通用户菜单数据源依赖「角色绑定了该 GET API」这一种子行为（init_roles 给普通用户绑了全部 GET API），自定义角色需管理员手工补 API 权限。
 - 不适用边界：本骨架不含任何业务 CRUD、文件上传、wangEditor；生产部署需自行配反代与 `VITE_API_BASE_URL`。
 
-## 附录 A：浏览器验收脚本（python playwright）
+## Evaluator 复跑评审（Hermes，2026-11-05）
+
+环境前置：后端四容器 healthy（`/api/v1/base/health` 200）；`npm run build` exit 0（vite v6.4.5，9.70s，仅 1 个 >500KB chunk 警告，见 CC 风险 3）；`npm run dev` 起 8080 后，Hermes 用 browser 走真实交互链逐屏断言。
+
+| # | verify 项 | 实际结果 |
+|---|---|---|
+| 1 | npm run build | exit 0，vue-tsc + vite build 全绿 |
+| 2 | 登录成功进布局 | 浏览器填 admin/abcd1234 → URL 切 /dashboard；el-menu 渲染、菜单「工作台」、顶栏 admin、面包屑「工作台」 |
+| 3 | 错误密码拒绝 | 填 admin/wrongpass → toast「密码错误!」，URL 仍 /login?redirect=/dashboard |
+| 4 | token 失效跳登录 | 篡改 localStorage `mattress_admin_access_token` 为 invalid → 刷新触发 userinfo 401 → token 清空（`None`）+ 跳 /login?redirect=%2Fdashboard |
+| 5 | 无 token 访问受保护路由 | 访问 /dashboard → 重定向 /login?redirect=/dashboard |
+
+补充确认：token 存储 key 为 `mattress_admin_access_token`/`mattress_admin_refresh_token`（storage.ts 封装，非裸 access_token）；首次探针写错 key 未触发是探针问题非代码问题。
+
+CC 自评 Playwright 10 项 PASS + Hermes 浏览器走查 4 项 PASS，独立一致。
+
+结论：**approved**。BE-03 置 done，BE-08/BE-09（Admin 业务 CRUD）解锁。CC 记录的 API 契约缺口（usermenu 聚合端点注释未启用、错误密码返回 400、种子菜单与前端路由不对应、登录限流 5 次/分钟）已在其 sprint_output 第 3/4 节记录，BE-08 落地业务页时按需处理，不阻塞本骨架通过。
 
 ```python
 """BE-03 admin skeleton browser verification (Playwright, chromium)."""
