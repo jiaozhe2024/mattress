@@ -26,7 +26,7 @@ if [ -f backend/docker-compose.yml ] || [ -f backend/compose.yaml ]; then
     cd backend 2>/dev/null && docker compose ps 2>/dev/null | head -5; cd ..
   fi
 else
-  echo "  WARN: backend/ 尚未初始化（先执行任务 BE-01）"
+  echo "  WARN: backend/ 尚未初始化（先执行任务 NG-01）"
 fi
 
 echo "[4/5] 小程序"

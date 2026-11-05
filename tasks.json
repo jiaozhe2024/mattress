@@ -1,36 +1,46 @@
 {
   "project": "mattress-ux（床垫选品小程序）",
-  "last_updated": "2026-11-04",
-  "current_focus": "BE-01 后端基座初始化进行中（后台跑）；MP-02~07 等 Figma 稿 + 用户确认",
+  "last_updated": "2026-11-05",
+  "current_focus": "技术选型重定稿（SQLModel+MySQL8，参考 FastAPI-Template），旧基座已清理；NG-01 待派 CC；MP-02~07 等 Figma 稿 + 用户确认",
   "tasks": [
     {
-      "id": "BE-01",
-      "title": "后端基座初始化（RuoYi-FastAPI）",
-      "description": "将 insistence/RuoYi-FastAPI 引入 backend/（推荐 git subtree add --prefix=backend，或 clone 到 /tmp 后去 .git 再搬入，主仓统一管理，不要留嵌套 .git）。按其官方文档配置 MySQL8+Redis，docker compose 拉起 api+admin。Docker Desktop 未运行时先执行 `open -a Docker` 并轮询 docker info 最多 90s；仍不可用则完成代码/配置部分并在 sprint_output 写明验收阻塞，不要假装成功。确认框架表 sys_/gen_ 保持原样，业务表前缀 gin_（本任务不建业务表）。admin 与 wxapi 服务端口/配置写入 sprint_output。",
+      "id": "NG-01",
+      "title": "后端基座初始化（FastAPI-Template 改造 + SQLModel + MySQL8）",
+      "description": "Clone JiayuXu0/FastAPI-Template 到 backend/（去 .git，不留嵌套）。只复用其 Router → Service → Repository 分层、RBAC、JWT、arq 队列的设计与代码；ORM 层按定稿替换为 SQLModel + MySQL8（模板官方为 Tortoise+PG，必须替换，驱动 asyncmy）。backend/docker-compose.yml 拉 mysql8+redis+api。跑通 JWT 登录与基础 RBAC，/docs Swagger 可访问。基座表保持原样，业务表前缀 gin_（本任务不建业务表）。License 已核验 MIT。Docker Desktop 未运行时先 `open -a Docker` 并轮询 docker info 最多 90s；仍不可用则完成代码/配置部分并在 sprint_output 写明验收阻塞，不要假装成功。",
       "status": "pending",
       "priority": "high",
       "blocked_by": "",
-      "verify": "bash init.sh 通过；按项目实际端口 curl admin 的 /dev-api 探活接口返回 JSON（真实端口记录进 sprint_output）；admin 登录页 HTTP 200；backend/ 内容已进 git 且无嵌套 .git；git log 有 init commit",
+      "verify": "bash init.sh 通过；curl api 健康端点/登录接口返回 JSON（真实端口与前缀记录进 sprint_output）；pytest 登录+RBAC 冒烟通过；确认 ORM 为 SQLModel（pip 无 tortoise 依赖）；backend/ 无嵌套 .git；git log 有 init commit",
       "requires_eval": true
     },
     {
+      "id": "BE-01",
+      "title": "后端基座初始化（RuoYi-FastAPI）【已废弃】",
+      "description": "2026-11-05 技术选型重定稿，RuoYi 基座废弃。代码已从 git 移除、容器/卷已清理，由 NG-01 取代。历史验收记录见 docs/exec-plans/active/BE-01-sprint-output.md（仅供历史参考，端口/前缀信息随基座废弃全部失效）。",
+      "status": "cancelled",
+      "priority": "low",
+      "blocked_by": "",
+      "verify": "不适用",
+      "requires_eval": false
+    },
+    {
       "id": "BE-02",
-      "title": "业务表结构与 SQLAlchemy 模型",
-      "description": "按 docs/product-specs/PRD-v1.1.md §7 建 10 张业务表模型（gin_spu/gin_sku/gin_category/gin_tag/gin_spu_tag/gin_article/gin_video/gin_content_goods/wx_user/gin_wishlist/gin_wishlist_item，含 gin_wishlist_item 共 11 个模型文件），gin_ 前缀，含 seed 演示数据（3 分类、8 商品含 SKU、2 文章、1 视频带关联商品）。wx_user.openid 唯一索引。参考 litemall goods 表设计。",
+      "title": "DB_SCHEMA.md + SQLModel 业务模型",
+      "description": "按 docs/product-specs/PRD-v1.1.md §7 在仓库根建 DB_SCHEMA.md，并用 SQLModel 建 11 个业务模型（gin_spu/gin_sku/gin_category/gin_tag/gin_spu_tag/gin_article/gin_video/gin_content_goods/wx_user/gin_wishlist/gin_wishlist_item），gin_ 前缀，走 alembic 迁移。含 seed 演示数据（3 分类、8 商品含 SKU、2 文章、1 视频带关联商品）。wx_user.openid 唯一索引。参考 litemall goods 表设计。",
       "status": "pending",
       "priority": "high",
-      "blocked_by": "BE-01",
-      "verify": "python -c 导入全部 models 无错；SQL 里核对表清单=11；seed 后 mysql 查询商品数=8、每商品至少1 SKU；pytest 冒烟通过",
+      "blocked_by": "NG-01",
+      "verify": "python -c 导入全部 models 无错；alembic 迁移后 SQL 里核对表清单=11；seed 后 mysql 查询商品数=8、每商品至少1 SKU；pytest 冒烟通过",
       "requires_eval": true
     },
     {
       "id": "BE-03",
-      "title": "Admin 业务 CRUD 页面（商品/分类/标签/内容）",
-      "description": "用若依代码生成器生成 gin_spu/gsku/gin_category/gin_tag/gin_article/gin_video 的 admin CRUD 页面并手调：商品页含 SPU-SKU 关联编辑与上下架开关；内容页富文本编辑 + 挂载商品（多选 gin_content_goods）。",
+      "title": "Admin 前端工程与业务 CRUD 页面（Vue3 + Element Plus）",
+      "description": "backend/admin/ 下建 Vite + Vue3 + TS + Element Plus 工程，不套模板，CC 基于后端 /docs Swagger 直接生成。页面：登录、布局框架、商品（SPU-SKU 关联编辑+上下架开关）、分类、标签、内容（wangEditor 富文本 + 挂载商品多选 gin_content_goods）CRUD（el-table + el-dialog 模式）；图片上传对接阿里云 OSS（账号未定时先留适配层+本地 mock）。",
       "status": "pending",
       "priority": "high",
       "blocked_by": "BE-02",
-      "verify": "admin 内逐模块 新建→编辑→下架→删除 走通且操作日志有记录；商品页能同时保存 SPU+至少2个SKU；文章能挂载2个商品",
+      "verify": "npm run build 通过；admin 内逐模块 新建→编辑→下架→删除 走通且后端操作日志有记录；商品页能同时保存 SPU+至少2个SKU；文章能挂载2个商品",
       "requires_eval": true
     },
     {
@@ -40,7 +50,7 @@
       "status": "pending",
       "priority": "high",
       "blocked_by": "BE-02",
-      "verify": "pytest：mock code2session 下登录返回 token、二次登录不重复建用户、非法 code 返回 401；curl 用 token 调 profile 200；确认 wx_user 表无 sys_user 写入",
+      "verify": "pytest：mock code2session 下登录返回 token、二次登录不重复建用户、非法 code 返回 401；curl 用 token 调 profile 200；确认 wx_user 无后台用户表混写",
       "requires_eval": true
     },
     {
@@ -65,22 +75,22 @@
     },
     {
       "id": "BE-07",
-      "title": "wxapi 内容社区接口",
-      "description": "/wxapi/content/feed（图文/视频混合，latest/hotest 两种排序，分页）、/wxapi/content/article/{id}（富文本+关联商品列表）、/wxapi/content/video/{id}（视频 URL+关联商品）。下架内容不可见。",
+      "title": "wxapi 内容社区接口 + arq 海报队列",
+      "description": "/wxapi/content/feed（图文/视频混合，latest/hotest 两种排序，分页）、/wxapi/content/article/{id}（富文本+关联商品列表）、/wxapi/content/video/{id}（视频 URL+关联商品）。下架内容不可见。附带配置 arq worker：分享海报生成任务入队（async 路由禁同步库，Pillow 走 worker 进程），海报落 OSS/本地存储路径返回 URL。",
       "status": "pending",
       "priority": "medium",
       "blocked_by": "BE-05",
-      "verify": "pytest：feed latest 与 hotest 排序断言（seed 热度差异）；下架文章在 feed 与详情都 404；详情返回关联商品数正确",
+      "verify": "pytest：feed latest 与 hotest 排序断言（seed 热度差异）；下架文章在 feed 与详情都 404；详情返回关联商品数正确；arq 队列单测：入队后 worker 消费产出海报文件且 URL 可访问",
       "requires_eval": true
     },
     {
       "id": "MP-01",
-      "title": "小程序骨架",
-      "description": "微信原生小程序项目结构 + Vant Weapp 引入（npm 构建）+ 请求封装（baseURL/token/统一错误）+ tabBar 四页占位：首页/内容/选品单/我的 + app.js 全局态。此任务不依赖 Figma（布局占位即可），先打通 automator 验收链路。",
+      "title": "小程序骨架（Uni-app + Vue3 + TS + Pinia）",
+      "description": "初始化 Uni-app (Vue3+TS) 工程（vite 模板，产物可被微信开发者工具打开）+ Pinia + 参考小兔鲜儿 (uniapp-shop-vue3-ts) 提取 request 封装（baseURL/token/统一错误，先查其 License）+ tabBar 四页占位：首页/内容/选品单/我的。此任务不依赖 Figma（布局占位即可），先打通 automator 验收链路（DevTools 打开的是 mp-weixin 构建产物）。",
       "status": "pending",
       "priority": "high",
       "blocked_by": "",
-      "verify": "cli open --project miniprogram 编译 0 报错；node scripts/e2e/skeleton.auto.js 输出 4 个 tab 截图且切换断言通过",
+      "verify": "npm run dev:mp-weixin 构建 0 报错；cli open 打开构建产物编译 0 报错；node scripts/e2e/skeleton.auto.js 输出 4 个 tab 截图且切换断言通过",
       "requires_eval": true
     },
     {
@@ -106,7 +116,7 @@
     {
       "id": "MP-04",
       "title": "商品详情页",
-      "description": "按 Figma 稿实现：主图/视频轮播、核心参数卡片（材质/软硬度/厚度/适用人群）、图文详情、底部操作栏（加入选品单，可多选已有选品单或新建）。",
+      "description": "按 Figma 稿实现：主图/视频轮播（SkuPopup 参考小兔鲜儿改造）、核心参数卡片（材质/软硬度/厚度/适用人群）、图文详情、底部操作栏（加入选品单，可多选已有选品单或新建，走 useSelectionStore）。",
       "status": "blocked",
       "priority": "high",
       "blocked_by": "Figma 详情页设计稿 + MP-01 + BE-05 + BE-06 + 用户确认设计稿",
@@ -115,12 +125,12 @@
     },
     {
       "id": "MP-05",
-      "title": "选品单列表/详情/分享",
-      "description": "按 Figma 稿实现选品单列表（新建/重命名/删除）、详情（商品列表）、分享（onShareAppMessage 卡片 + 被分享打开时 onLoad 解析 scene 调 share 回显接口）。海报小程序码后端生成放 P1（backlog）。",
+      "title": "选品单列表/详情/分享（含参数对比）",
+      "description": "按 Figma 稿实现选品单列表（新建/重命名/删除）、详情（商品列表，支持拖拽排序 + 多商品参数对比视图，数据来自 useSelectionStore.compareProducts）、分享（onShareAppMessage 卡片 + 被分享打开时 onLoad 解析 scene 调 share 回显接口）。海报小程序码由 BE-07 arq 任务生成后端出图。",
       "status": "blocked",
       "priority": "high",
       "blocked_by": "Figma 选品单设计稿 + MP-01 + BE-06 + 用户确认设计稿",
-      "verify": "automator：新建→改名→删除闭环；模拟分享参数打开回显只读视图；e2e 不依赖真实 wx.share API（mock）；截图对照 Figma",
+      "verify": "automator：新建→改名→删除闭环；拖拽排序持久化；对比视图渲染所选商品参数矩阵；模拟分享参数打开回显只读视图；e2e 不依赖真实 wx.share API（mock）；截图对照 Figma",
       "requires_eval": true
     },
     {

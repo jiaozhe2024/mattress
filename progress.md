@@ -4,6 +4,13 @@
 
 ---
 
+## 2026-11-05 技术选型重定稿 + 旧基座清理 + 任务重排
+- 决策：后端 FastAPI + **SQLModel** + MySQL8 + Redis（参考 JiayuXu0/FastAPI-Template 的分层/RBAC/JWT/arq，ORM 层自建，模板官方 Tortoise+PG 不采用）；管理后台 Vue3+Element Plus+Vite 由 CC 生成；小程序改 Uni-app+Vue3+TS+Pinia。依据：仓库根 技术选型.md
+- 清理：backend/ RuoYi-FastAPI 旧基座 git 全量移除；ruoyi-* 四容器 + mysql/redis 卷 `docker compose down --volumes` 清空；backend/ 留占位 README
+- tasks.json 重排：新增 NG-01（新基座初始化）；BE-01 → cancelled；BE-02 改 SQLModel/alembic；BE-03 改 Admin CC 生成；BE-07 附带 arq 海报队列；MP-01 改 Uni-app；MP-05 补参数对比
+- 文档同步：TECH_DECISIONS / ARCHITECTURE / CONVENTIONS / PRD-v1.1 / QUALITY 全部去 RuoYi 化；AGENTS.md 技术栈与红线更新
+- 下次从这里开始：派 CC 执行 NG-01（阻塞 BE-02）；或并行 MP-01（不依赖 Figma/后端）
+
 ## 2026-11-05 BE-01 后端基座初始化（RuoYi-FastAPI）
 - RuoYi-FastAPI master 基座 2755 文件全量迁入 backend/（无嵌套 .git，sys_/gen_ 框架表原样，未建业务表）
 - 新增 backend/docker-compose.yml（跟随上游 MySQL 版官方 compose，补 mysql/redis 持久化卷）

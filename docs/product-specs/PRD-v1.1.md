@@ -32,7 +32,7 @@
 ### 2.6 用户与系统
 - 微信一键授权登录；个人中心入口（我的选品单）
 
-## 3. 后端（服务端，RuoYi-FastAPI 基座，单一 FastAPI 服务两套路由）
+## 3. 后端（服务端，FastAPI + SQLModel，单一 FastAPI 服务两套路由）
 
 ### 3.1 商品管理
 - SPU/SKU 增删改查、上下架管理（Admin）
@@ -56,11 +56,11 @@
 
 ## 4. 技术约束（已确认，写死）
 
-- 小程序端：微信原生 + Vant Weapp；不引入 uni-app/Taro（除非确认第二端）
-- 后端基座：insistence/RuoYi-FastAPI（MIT，1.5k+★，2026 活跃），FastAPI + SQLAlchemy + MySQL 8 + Redis + OAuth2/JWT
-- Admin 前端：RuoYi-FastAPI 自带 Vue3 + Element Plus（官方 RuoYi-Vue3 前端）
-- 用户分表：sys_user 仅管理运营人员；小程序用户独立 wx_user 表（openid 唯一索引），两群体永不混表
-- 业务表前缀 gin_，与框架系统表（sys_/gen_/mon_ 等）分离；业务代码不依赖框架表结构，便于跟随上游升级
+- 小程序端：Uni-app + Vue3 + TS + Pinia（参考小兔鲜儿 uniapp-shop-vue3-ts；多清单选品状态必须 Pinia）
+- 后端：FastAPI + SQLModel + MySQL 8 + Redis；参考基座 JiayuXu0/FastAPI-Template（MIT，复用 RBAC/JWT/arq），ORM 层自建 SQLModel
+- Admin 前端：Vue3 + Element Plus + Vite，CC 直接生成，不套模板
+- 用户分表：后台用户表仅管理运营人员；小程序用户独立 wx_user 表（openid 唯一索引），两群体永不混表
+- 业务表前缀 gin_，与基座框架表分离；业务代码不依赖基座表结构，便于跟随上游升级
 - 分享解析：wxacode.getUnlimited scene=清单ID（scene 长度 ≤32 字符约束）；新会话 onLoad 解析
 - 微信真实 API（wx.login/code2session、订阅消息等）在开发/自动化环境必须 dev-mock；解析逻辑用单测覆盖
 - 部署：腾讯云轻量 + Docker Compose（api/mysql/redis/admin nginx）+ 域名 ICP 备案 + HTTPS（小程序 request 合法域名硬性要求）

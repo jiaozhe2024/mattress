@@ -1,12 +1,16 @@
 # 床垫选品小程序 (mattress-ux) — Agent 工作指南
 
 ## 这是什么项目
-微信原生小程序 + FastAPI 后端的床垫在线选品工具：商品展示（材质/软硬度/厚度/适用人群）+ 内容社区（文章/视频带货）+ 选品单（收藏夹 + 微信分享裂变）。商用项目，UI 由 Designer 在 Figma 出稿，CC 开发，Hermes 独立验收。
+Uni-app (Vue3) 微信小程序 + FastAPI 后端的床垫在线选品工具：商品展示（材质/软硬度/厚度/适用人群）+ 内容社区（文章/视频带货）+ 选品单（收藏夹 + 微信分享裂变）。商用项目，UI 由 Designer 在 Figma 出稿，CC 开发，Hermes 独立验收。
 
 ## 快速定向
 - 工作目录：项目根 = /Users/jiaozhe/own/mattress-ux
-- 技术栈：小程序（微信原生 + Vant Weapp）+ FastAPI/SQLAlchemy/MySQL8/Redis（RuoYi-FastAPI 基座）+ Vue3/Element Plus Admin
-- 目录：miniprogram/（小程序端）、backend/（FastAPI + Admin，基座 fork 自 insistence/RuoYi-FastAPI）、scripts/e2e/（自动化验收脚本）、docs/
+- 技术栈（定稿见 技术选型.md）：
+  - 后端 API：FastAPI + SQLModel + MySQL8 + Redis（已定稿确认）。参考 JiayuXu0/FastAPI-Template（已核验 MIT），仅复用其 Router → Service → Repository 分层、RBAC、JWT、arq 异步任务队列的设计与代码；ORM 层按定稿自建 SQLModel + MySQL8（模板官方为 Tortoise+PG，不采用）。商品/选品单/内容业务由 CC 从零生成
+  - 管理后台 (B端)：Vue3 + Element Plus + Vite，不套模板，由 CC 直接生成 CRUD 页面（基于后端 Schema，保证代码风格统一）
+  - 小程序 (C端)：Uni-app + Vue3 + TS + Pinia，参考 小兔鲜儿 (uniapp-shop-vue3-ts) 的请求封装、SKU 选择器、商品卡片；"多清单选品"核心逻辑由 CC 从零生成
+- 目录：backend/（FastAPI 后端 + Admin）、miniprogram/（小程序端）、scripts/e2e/（自动化验收脚本）、docs/
+- 旧基座已清理：RuoYi-FastAPI（BE-01）代码已 git 移除、容器/卷已 down --volumes；backend/ 待按 NG-01 重建。BE-01 记为 cancelled，历史记录见 docs/exec-plans/active/BE-01-sprint-output.md（端口/前缀信息已失效）
 - 启动：后端 backend/ `docker compose up -d`；小程序用微信开发者工具 CLI `cli open --project miniprogram`（cli = /Applications/wechatwebdevtools.app/Contents/MacOS/cli）
 - 测试：后端 pytest（backend/ 内）；小程序 vitest + miniprogram-simulate；E2E `node scripts/e2e/<页>.auto.js`
 - 环境检查：`bash init.sh`
@@ -14,6 +18,7 @@
 ## 知识库地图
 | 我想了解... | 去读这个文件 |
 |------------|-------------|
+| 技术选型定稿（选型表 + CC 协同 SOP + 商用红线） | 技术选型.md |
 | 产品需求（PRD V1.1） | docs/product-specs/PRD-v1.1.md |
 | 业务定位、目标用户 | docs/business-solution.md |
 | 整体架构、模块划分 | docs/ARCHITECTURE.md |
@@ -26,16 +31,19 @@
 | 已知技术债务 | docs/exec-plans/tech-debt-tracker.md |
 
 ## 核心约定（必读，违反即返工）
-1. 用户分表：sys_user 只放运营人员；小程序用户进 wx_user（openid 唯一索引）。永远不要把小程序用户写进 sys_user。
-2. 业务表前缀 gin_，不依赖框架表结构（跟随上游升级不被绑架）。
+1. 用户分表：后台/运营用户与小程序用户严格分表；小程序用户进 wx_user（openid 唯一索引），永远不写进后台用户体系。
+2. 业务表前缀 gin_，不依赖基座框架表结构（跟随上游升级不被绑架）。
 3. 搜索用 MySQL FULLTEXT/LIKE，数据量 <10 万禁止引入 Elasticsearch。
 4. 微信真实 API（wx.login/code2session、订阅消息）在 dev/自动化环境必须 mock（固定测试 openid），解析逻辑用单测覆盖。
 5. 每个页面/功能交付时必须同时交付 scripts/e2e/<功能>.auto.js（miniprogram-automator 脚本），与页面同 commit。
 6. CC 实现任何 UI 页面前，先读 docs/design/figma-handoff.md 和任务中挂载的 Figma 设计稿链接/token。
 7. 商品交易（订单/支付/购物车）不在 V1.1 范围，不要实现、不要设计表。
+8. 异步红线：严禁在 FastAPI 的 async 路由中调用同步库（requests、time.sleep、同步 Pillow）；所有外部调用必须用 httpx.AsyncClient，海报生成等耗时操作必须扔进 arq 异步队列，避免阻塞主线程。
+9. 小程序状态管理：多清单选品逻辑必须用 Pinia（useSelectionStore：当前清单 ID、清单内商品列表、addToSelection/compareProducts），严禁用 uni.setStorageSync 或全局变量在页面间传递选品数据，否则参数对比功能无法实现。
+10. 商用 License 红线：引入任何开源代码前先查 LICENSE，必须是 MIT 或 Apache-2.0 才能直接复制文件；GPL 或不明协议只参考代码思路，绝不复制文件。（FastAPI-Template 已核验 MIT；引入 小兔鲜儿 前同样先查。）
 
 ## 工作规范
-1. 改之前先读：修改任何模块前先读对应文档；RuoYi-FastAPI 基座内部结构沿用其官方约定，改框架代码须在 commit 说明原因。
+1. 改之前先读：修改任何模块前先读对应文档；FastAPI-Template 基座内部结构沿用其官方约定（Router → Service → Repository 分层），改基座代码须在 commit 说明原因。
 2. 完成即提交：每功能完成后立即 git commit，格式 type(scope): 描述。
 3. 更新文档：影响架构/约定的修改同步更新 docs/。
 4. 不要猜：看不懂先读文档，文档没有再问（tasks.json 描述不清时问 Hermes，不要自行发明需求）。
@@ -48,5 +56,5 @@
 ## 禁止事项
 - 不要修改 .git/、node_modules/
 - 不要跳过 verify 自行宣称完成
-- 不要直接改 RuoYi 框架系统表（sys_*）结构
+- 不要直接改基座框架系统表结构（业务表一律 gin_ 前缀）
 - 不要实现 PRD 范围外的大功能（先回写 backlog）

@@ -1,0 +1,14 @@
+# editor
+.history/
+
+# node
+node_modules/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# 构建产物
+miniprogram/dist/
+backend/admin/dist/
