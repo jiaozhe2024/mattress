@@ -1,5 +1,5 @@
-# 使用官方 Python 3.11 slim 镜像作为基础镜像
-FROM python:3.11-slim
+# 使用官方 Python 3.12 slim 镜像作为基础镜像
+FROM python:3.12-slim
 
 # 设置工作目录
 WORKDIR /app
@@ -10,24 +10,19 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/src \
     TZ=Asia/Shanghai
 
-# 更换为国内镜像源以加速
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
-
-# 安装系统依赖
+# 安装系统依赖（asyncmy 有预编译 wheel，无需 libpq-dev；gcc/g++ 兜底个别源码包）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
-    libpq-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件并安装 Python 依赖
 COPY pyproject.toml ./
-COPY README.md ./
 COPY src ./src
 
-RUN pip install --no-cache-dir --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
-    pip install --no-cache-dir . -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install --no-cache-dir --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/ && \
+    pip install --no-cache-dir . -i https://mirrors.aliyun.com/pypi/simple/
 
 # 复制项目文件
 COPY . .

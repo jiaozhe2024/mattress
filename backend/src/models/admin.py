@@ -93,7 +93,7 @@ class Menu(BaseModel, TimestampMixin, table=True):
 
     name: str = Field(max_length=20, index=True, description="菜单名称")
     remark: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True), description="保留字段")
-    menu_type: str | None = Field(default=None, max_length=1, description="菜单类型")
+    menu_type: str | None = Field(default=None, max_length=16, description="菜单类型")
     icon: str | None = Field(default=None, max_length=100, description="菜单图标")
     path: str = Field(max_length=100, index=True, description="菜单路径")
     order: int = Field(default=0, index=True, description="排序")

@@ -13,6 +13,13 @@ import sys
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
+# cwd 切到 tests/：规避 slowapi 0.1.10 + starlette 1.10.0 兼容 bug ——
+# slowapi 初始化会硬编码读 cwd 下的 ".env"（本机存在、容器内被 .dockerignore
+# 排除），触发 AdaptiveEnvConfig._read_file 签名不匹配 TypeError。
+# tests/ 下无 .env，slowapi 走 config_filename=None 空配置分支。所有路径引用
+# 均基于 __file__（BACKEND_DIR/settings.BASE_DIR），不受 cwd 影响。
+os.chdir(Path(__file__).resolve().parent)
+
 # ---- 测试环境变量（必须先于 src 导入） ----
 os.environ.setdefault("APP_ENV", "testing")
 os.environ.setdefault("TESTING", "true")

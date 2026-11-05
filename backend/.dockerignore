@@ -60,7 +60,6 @@ logs
 # Documentation
 docs
 *.md
-README*
 
 # Docker
 Dockerfile*
