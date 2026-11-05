@@ -174,6 +174,8 @@ cython_debug/
 /logs/*.log
 /uploads/*
 !uploads/.gitkeep
+# BE-08: pytest 图片上传用例产物（tests/ 为测试 cwd，落 tests/uploads/images/）
+/tests/uploads/
 # BE-02: migrations/ 为 alembic 业务表迁移链交付物，必须入库（模板默认忽略已移除）
 *.sqlite3*
 
