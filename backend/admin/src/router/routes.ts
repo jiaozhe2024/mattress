@@ -59,6 +59,12 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/views/article/index.vue'),
         meta: { title: '资讯与服务管理', icon: 'Document', rbacPath: '/content/article' },
       },
+      {
+        path: 'brand',
+        name: 'ContentBrand',
+        component: () => import('@/views/brand/index.vue'),
+        meta: { title: '品牌信息配置', icon: 'Flag', rbacPath: '/content/brand' },
+      },
     ],
   },
   {
