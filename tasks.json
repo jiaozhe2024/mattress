@@ -1,7 +1,7 @@
 {
   "project": "mattress-ux（床垫选品方案小程序 V2.0）",
   "last_updated": "2026-11-05",
-  "current_focus": "BE-06 与 MP-02 已验收置 done（BE-08 后端完成前端未做）。待办：①重派 CC 补 BE-08 Admin 前端 5 模块 ②BE-09（Admin 用户/方案/角色/日志，依赖 BE-03+BE-06 均满足）③MP-03~06（依赖 jp/ 图已就绪+BE-05/06 已完成，可派）④用户需在微信开发者工具扫码登录后补跑 MP-02 e2e（home.auto.js）⑤补修 sqlite 测试索引债务（tech-debt-tracker 已记）",
+  "current_focus": "watchdog 已建档（cron 791834606f95 每 15 分钟巡检 CC，挂死自动 kill+macOS 通知，logs: docs/exec-plans/watchdog.log）。BE-08 前端续跑（pid 64139，剩余产品/资讯/品牌 3 模块）+ MP-03 产品列表骨架版（pid 64161，用户决策：先骨架视觉后对齐）双 CC 运行中；完成后逐个验收；BE-09/MP-04~06 随后；MP-02 e2e 待用户扫码补跑",
   "tasks": [
     {
       "id": "NG-01",
