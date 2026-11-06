@@ -28,6 +28,22 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // BE-08 内容管理目录：meta.rbacPath 与后端 init_content_menus 种子对齐
+    // （catalog path='/content'，子菜单为相对片段，归一化后 /content/<path>）
+    path: '/content',
+    component: Layout,
+    redirect: '/content/banner',
+    meta: { title: '内容管理', icon: 'Files', rbacPath: '/content' },
+    children: [
+      {
+        path: 'banner',
+        name: 'ContentBanner',
+        component: () => import('@/views/banner/index.vue'),
+        meta: { title: '轮播图管理', icon: 'Picture', rbacPath: '/content/banner' },
+      },
+    ],
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/error/404.vue'),

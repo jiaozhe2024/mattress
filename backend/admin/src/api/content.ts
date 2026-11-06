@@ -57,6 +57,11 @@ export function updateBanner(id: number, payload: BannerUpdate): Promise<Banner>
   return request<Banner>({ url: `/admin/banners/${id}`, method: 'PUT', data: payload })
 }
 
+/** PUT /admin/banners/{id}/status（StatusToggle：0 禁用 / 1 启用） */
+export function toggleBannerStatus(id: number, status: 0 | 1): Promise<Banner> {
+  return request<Banner>({ url: `/admin/banners/${id}/status`, method: 'PUT', data: { status } })
+}
+
 /** 软删除：后端置 status=0（DELETE /admin/banners/{id}） */
 export function deleteBanner(id: number): Promise<null> {
   return request<null>({ url: `/admin/banners/${id}`, method: 'DELETE' })
@@ -74,6 +79,15 @@ export function createCategory(payload: CategoryCreate): Promise<Category> {
 
 export function updateCategory(id: number, payload: CategoryUpdate): Promise<Category> {
   return request<Category>({ url: `/admin/categories/${id}`, method: 'PUT', data: payload })
+}
+
+/** PUT /admin/categories/{id}/status（预置分类的『删除』替代：只许禁用） */
+export function toggleCategoryStatus(id: number, status: 0 | 1): Promise<Category> {
+  return request<Category>({
+    url: `/admin/categories/${id}/status`,
+    method: 'PUT',
+    data: { status },
+  })
 }
 
 /** 预置分类/有产品的分类后端 400 拒绝；前端对 is_preset 隐藏删除入口 */
@@ -127,6 +141,11 @@ export function createArticle(payload: ArticleCreate): Promise<Article> {
 
 export function updateArticle(id: number, payload: ArticleUpdate): Promise<Article> {
   return request<Article>({ url: `/admin/articles/${id}`, method: 'PUT', data: payload })
+}
+
+/** PUT /admin/articles/{id}/status（0 下线 / 1 发布） */
+export function toggleArticleStatus(id: number, status: 0 | 1): Promise<Article> {
+  return request<Article>({ url: `/admin/articles/${id}/status`, method: 'PUT', data: { status } })
 }
 
 /** 软删除：后端下线 status=0 */
