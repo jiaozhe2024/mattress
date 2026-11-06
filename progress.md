@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-11-06 BE-08 Admin 内容管理前端收尾（接续 session）（submitted，待验收）
+- 前序已交付：后端 5 模块 CRUD API+OSS 适配层+27 用例全绿（b66f7cc/41fcebb/549a118）；前端基建+轮播+分类（16ae3df/f634ed7/d0e43c7）
+- 本 session 3 commit 补齐前端：**fff8342 产品管理**（接续未提交 views/product/index.vue：筛选分页列表 分类/名称/型号/状态、完整编辑表单=基础信息+主图单传+详情轮播图≤10+实拍图≤20+wangEditor 富文本+上下架开关、批量上下架）；**72c98d3 资讯与服务管理**（news/service 分类筛选+标题 LIKE+状态、编辑弹窗=标题/分类 radio/封面/wangEditor/发布开关、软删除带确认）；**831ea13 品牌信息配置**（单页表单=介绍 textarea/加盟电话前端校验 ^\d{6,20}$ 与后端一致/客服承诺可增删行 ≤20 条提交过滤空白/门店图多传 ≤20、GET null 首存提示）
+- 路由菜单：五模块全挂 /content 下，meta.rbacPath=/content/banner|category|product|article|brand 与后端 init_content_menus 种子对齐，走 BE-03 RBAC 过滤
+- 验收：backend/admin `npm run build`（vue-tsc+vite）0 errors；登录 admin 后 curl 五模块 list 端点全 code=200 且 shape 与 types/content.ts 逐字段一致（banners 2 条/categories 7 条/products 分页含 category_name/articles 列表 content=null 编辑走详情/brand 单行 seed）
+- 遗留风险：seed join_phone=400-800-1234 含连字符与后端纯数字校验冲突（保存品牌页需先改为纯数字，建议记 tech-debt）；主 chunk >500kB 体积 warning（wangEditor+ElementPlus，可后续 manualChunks）；浏览器交互走查留 Hermes（npm run dev）
+- 详情 docs/exec-plans/active/BE-08-sprint-output.md；tasks.json BE-08 → submitted（未 commit，Hermes 所有权）
+
 ## 2026-11-05 BE-06 wxapi 方案 CRUD+快照+分享（V2.0 核心）（submitted，待验收）
 - 7 端点挂 /api/v1/wxapi/schemes*：POST 创建（单事务固化快照，产品缺失 404 整体回滚）、PUT 整体替换（删旧快照行按产品当前状态重新固化）、GET 列表（本人 create_time desc 分页 size≤50，软删除不出现）、GET 详情（含快照列表）、GET /{id}/public（匿名回显，出参 Schema 物理无 user_id/openid，仅 nickname 展示字段）、DELETE 软删除（gin_scheme.deleted_at 新列 + alembic 迁移 a3f7c9d21e05，行/快照保留供 BE-09）、POST /{id}/share（SQL 原子自增）；越权一律 403，不存在/已删 404
 - 快照冻结 12 字段（aaa.md §4.3.1）：id/category_id/category_name/name/model/slogan/spec/sleep_feel/main_image/detail_images/real_images/detail_content；product_ids 去重保序 → sort=0..n-1；核心不变量测试：产品改名/改规格后旧方案 owner+public 双通道仍为快照旧值
