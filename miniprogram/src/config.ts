@@ -3,6 +3,9 @@
 /** 选品/方案页目标路由（MP-05 落地前 SuspenseFab 回退到产品列表 tab）。 */
 export const SELECTION_PAGE = "/pages/scheme/selection";
 
+/** 方案编辑页（MP-05 落地前产品列表底部已选栏 OK 回退为 toast 保留选品）。 */
+export const SCHEME_EDIT_PAGE = "/pages/scheme/edit";
+
 /** 产品列表为 tabBar 页，跳转一律 switchTab。 */
 export const PRODUCT_LIST_TAB = "/pages/product/list";
 
