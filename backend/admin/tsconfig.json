@@ -16,7 +16,12 @@
     "types": ["vite/client", "node"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      // @wangeditor/editor-for-vue@5.1.12 的 exports 未声明 types 入口，
+      // bundler 解析拿不到 dist/src/index.d.ts（TS7016），这里显式映射；运行时仍走包 exports
+      "@wangeditor/editor-for-vue": [
+        "node_modules/@wangeditor/editor-for-vue/dist/src/index.d.ts"
+      ]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue", "vite.config.ts"]

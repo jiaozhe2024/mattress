@@ -72,12 +72,20 @@ const auth = useAuthStore()
 
 const activePath = computed(() => route.path)
 
-/** 侧边栏 = Layout 路由 children 经 RBAC 过滤后的结果 */
+/**
+ * 侧边栏 = 所有 Layout 路由（'/' 与 BE-08 起的 '/content' 等业务目录）children
+ * 经 RBAC 过滤后的拼接结果。hidden / 无 children 的顶层路由（login/404）跳过。
+ */
 const menuItems = computed<MenuNode[]>(() => {
-  const layoutRoute = routes.find((r) => r.path === '/')
-  if (!layoutRoute?.children) return []
-  const allowed = filterMenuRoutes(layoutRoute.children, auth.allowedMenuPaths)
-  return toMenuNodes('/', allowed)
+  const nodes: MenuNode[] = []
+  for (const layoutRoute of routes) {
+    const meta = layoutRoute.meta as { hidden?: boolean } | undefined
+    if (meta?.hidden === true) continue
+    if (!layoutRoute.children || layoutRoute.children.length === 0) continue
+    const allowed = filterMenuRoutes(layoutRoute.children, auth.allowedMenuPaths)
+    nodes.push(...toMenuNodes(layoutRoute.path, allowed))
+  }
+  return nodes
 })
 </script>
 
