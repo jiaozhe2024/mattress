@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-11-06 MP-03 产品列表页功能骨架（续接中断 session）（submitted，待验收）
+- 用户决策本轮：功能骨架优先（逻辑/数据/交互完整，**不做** jp 图像素级视觉还原，视觉精修后续另派）
+- **续接**上一中断会话的未提交文件（先读后接，未推倒重写）：list.vue / api/product.ts / composables/useProductList.ts / components/product/{ProductCard,SelectedBar}.vue / utils/{debounce,searchHistory}.ts / config.ts(+SCHEME_EDIT_PAGE) / types/product.ts(+WxProductListItem/WxProductPage)
+- 本 session 新增：4 单测文件（31 用例）、e2e product-list.auto.js、home.auto.js 向后兼容修正、MP-03-sprint-output.md
+- 功能：GET /wxapi/products 分页(size=10,≤50)+category_id+keyword(300ms 防抖)+sort；竞态防护(requestSeq)；loading/ready/error/empty 四态；触底 loadMore；分类侧边导航(onShow 经 useProductFilterStore 接首页 jump_type=2/宫格传参,核心约定9)；排序 Tab 综合/推荐/新品；宫格⇄列表视图切换；产品卡「+」调 useSelectionStore.addProduct(去重,已选置灰✓)；底部已选栏(数量+横滚缩略图+移除+OK)；搜索历史 10 条本地存储(约定9 例外:历史属页面偏好非选品数据)
+- 排序契约：BE-05 ProductSort 仅 comprehensive/newest，无独立推荐；「推荐」Tab 回退 comprehensive(仅改 api/product.ts SORT_TABS 映射表即可扩展)
+- OK 跳转：/pages/scheme/edit(MP-05,未建)→navigateTo fail 回退 toast 并保留 Pinia 选品；卡片点击→/pages/product/detail(MP-04,未建)同样回退,不留死链
+- 验收：`npm run build:mp-weixin` 0 errors；`npx vitest run` **10 files/63 passed**(本轮 +31)；后端可达 products.total=7/categories=7/keyword「卷绵」=1；e2e product-list.auto.js 第[0]步后端基准通过
+- **遗留风险**：e2e 浏览器走查环境阻塞——`automator.launch` 挂起 >140s(微信开发者工具需扫码登录+开服务端口,与 MP-02 同类)，**未伪造 e2e 输出**，需用户侧扫码后复跑；视觉为骨架非像素还原(本轮范围外)；推荐排序为回退
+- home.auto.js 兼容修正：MP-02 断言[3]原查 `.pending-category` 占位,MP-03 起列表为真实页,改查 `.pl-side-item--active` 高亮=jump_value 对应分类名(**仅改 e2e 脚本,未动 MP-02 页面源码**)
+- 范围守护：未动 backend/、AGENTS.md；tasks.json 仅改 MP-03→submitted(**不 commit**,Hermes 所有权)；未 stage 并发 BE-08 改动的 demo_seed.py/BE-08-sprint-output.md/tech-debt-tracker.md/docs/CONVENTIONS.md(MP-02 遗留)；未碰 jp/、figma-exports/、CLAUDE.md、部署.md
+- 详情 docs/exec-plans/active/MP-03-sprint-output.md
+
 ## 2026-11-06 BE-08 Admin 内容管理前端收尾（接续 session）（submitted，待验收）
 - 前序已交付：后端 5 模块 CRUD API+OSS 适配层+27 用例全绿（b66f7cc/41fcebb/549a118）；前端基建+轮播+分类（16ae3df/f634ed7/d0e43c7）
 - 本 session 3 commit 补齐前端：**fff8342 产品管理**（接续未提交 views/product/index.vue：筛选分页列表 分类/名称/型号/状态、完整编辑表单=基础信息+主图单传+详情轮播图≤10+实拍图≤20+wangEditor 富文本+上下架开关、批量上下架）；**72c98d3 资讯与服务管理**（news/service 分类筛选+标题 LIKE+状态、编辑弹窗=标题/分类 radio/封面/wangEditor/发布开关、软删除带确认）；**831ea13 品牌信息配置**（单页表单=介绍 textarea/加盟电话前端校验 ^\d{6,20}$ 与后端一致/客服承诺可增删行 ≤20 条提交过滤空白/门店图多传 ≤20、GET null 首存提示）

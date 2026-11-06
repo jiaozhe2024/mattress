@@ -1,7 +1,7 @@
 {
   "project": "mattress-ux（床垫选品方案小程序 V2.0）",
   "last_updated": "2026-11-05",
-  "current_focus": "BE-08（Admin 内容 CRUD 五模块）验收 approved 置 done；MP-03 产品列表骨架 CC 运行中（pid 64161）；之后 BE-09 / MP-04~06 待派；MP-02 e2e 待用户扫码补跑；watchdog cron 791834606f95 每 15 分钟巡检",
+  "current_focus": "MP-03（产品列表功能骨架）验收 approved 置 done。MVP 后端全部 done、Admin 全 done、小程序 3 页 done（首页/产品列表）。可派：BE-09（Admin 数据与系统管理）、MP-04（产品详情）、MP-05（方案中心）、MP-06（个人中心）。待用户：①微信开发者工具扫码补跑 MP-02/MP-03 e2e ②确认设计图（MP-04~06 视觉精修）③设计稿后对齐 MP-02/03 视觉",
   "tasks": [
     {
       "id": "NG-01",
@@ -127,7 +127,7 @@
       "id": "MP-03",
       "title": "产品列表页（搜索/侧分类/排序/选品）",
       "description": "按 jp/产品分类列表.jpg + jp/产品页.jpg 实现：搜索栏（防抖 300ms、历史 10 条本地存储、空态）、左侧分类侧边导航、排序 Tab（综合/推荐/新品）、视图切换（宫格 2 列/列表 1 列）、产品卡片（主图/名称/型号/规格/睡感/tags/可选价格 + 圆形+按钮 addToSelection，已选置灰）、底部已选栏（数量+缩略图+移除+OK 跳方案编辑）。接 GET /wxapi/products（category_id/keyword/sort/分页）。",
-      "status": "submitted",
+      "status": "done",
       "priority": "high",
       "blocked_by": "用户确认设计稿 + MP-01 + BE-05",
       "verify": "automator：输入『卷绵』命中并渲染、清空显示空态、分类切换列表刷新、排序切换生效、点 + 加入选品后底部栏数量+缩略图更新、已选按钮置灰、OK 跳方案编辑页并带出已选；截图对照设计稿",

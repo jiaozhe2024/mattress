@@ -123,15 +123,22 @@ async function runAssertions(miniProgram, homeData) {
       current.path === "pages/product/list",
       `jump_type=2 banner 应跳产品列表，实际 ${current.path}`
     );
-    const pending = await current.$(".pending-category");
-    assert(pending, "产品列表占位页应显示已接收分类筛选（.pending-category）");
-    const pendingText = await pending.text();
+    // MP-03 起产品列表页为真实页：Pinia 传入的分类应命中左侧侧边导航的高亮项。
+    const targetId = Number(tappedBanner.jump_value);
+    const targetCategory = homeData.categories.find((c) => c.id === targetId);
     assert(
-      pendingText.includes(`category_id=${tappedBanner.jump_value}`),
-      `应携带 category_id=${tappedBanner.jump_value}，实际文案：${pendingText}`
+      targetCategory,
+      `banner jump_value=${tappedBanner.jump_value} 应在 home 分类列表中可解析`
+    );
+    const activeSide = await waitFor(current, ".pl-side-item--active", 8000);
+    assert(activeSide, "产品列表页应存在高亮的分类侧边项（.pl-side-item--active）");
+    const activeText = (await activeSide.text()).trim();
+    assert(
+      activeText.includes(targetCategory.name),
+      `侧边高亮应为「${targetCategory.name}」(category_id=${targetId})，实际「${activeText}」`
     );
     console.log(
-      `[3] jump_type=2 banner 跳分类列表通过（category_id=${tappedBanner.jump_value}）`
+      `[3] jump_type=2 banner 跳分类列表通过（高亮分类=${targetCategory.name}, category_id=${targetId}）`
     );
   } else {
     console.log(
