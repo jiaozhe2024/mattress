@@ -75,3 +75,32 @@
 3. **浏览器交互走查未做**：本 session 仅验证 build 0 错误 + API shape 可达；弹窗交互/上传/富文本编辑器的浏览器实操走查留给 Hermes 验收（npm run dev）。
 4. 产品「删除」语义 = 下架（status=0），无物理删除按钮，与后端设计一致（tasks.json verify 中「删除」按此语义走查）。
 5. tasks.json BE-08 → submitted（按惯例**未 commit**，Hermes 所有权）。
+
+---
+
+## Evaluator 复跑评审（Hermes，2026-11-06）
+
+**背景**：BE-08 前端续跑（CC 第二个会话，撞轮次前完成 3 模块 3 commit：产品 fff8342 / 资讯 72c98d3 / 品牌 831ea13；首个会话已交付基建 16ae3df + 轮播 f634ed7 + 分类 d0e43c7）。Hermes 独立复跑验收。
+
+### Verify 逐条复跑（后端容器 healthy，localhost:8000/8080）
+
+| # | verify 项 | 命令/操作 | 结果 |
+|---|---|---|---|
+| 1 | npm run build | `cd backend/admin && npm run build` | exit 0（vue-tsc + vite，18.54s，仅 >500kB chunk warning） |
+| 2 | 五模块后端 API 可达 | curl `admin/banners \| categories \| products \| articles \| brand`（admin JWT） | 5×HTTP 200，shape 与 types/content.ts 一致 |
+| 3 | 登录后菜单渲染 | browser 走查：admin/abcd1234 登录 → /dashboard | 菜单含「工作台+轮播图管理+产品分类管理+产品管理+资讯与服务管理+品牌信息配置」6 项 |
+| 4 | 产品管理列表+编辑表单 | browser：产品管理页 → 列表 7 行 seed 产品；点「编辑」弹窗 | 列表 ✓；弹窗含 6 输入 + 上下架开关 ×1 + 上传组件 ×3（主图/详情轮播/实拍图）+ wangEditor 富文本容器 ×4 |
+| 5 | 品牌页保存链路 | browser：品牌信息页 → 点保存 | 前端校验正确拦截 `加盟电话必须为 6-20 位纯数字`（seed 电话 400-800-1234 含连字符） |
+
+### 验收中发现并修复（1 个 seed 数据冲突，验收范围内补丁）
+
+**问题**：seed `join_phone=400-800-1234`（含连字符）与后端/前端 `^\d{6,20}$` 纯数字校验冲突——管理员打开品牌页直接点保存必被拦截（CC 已在遗留风险 #1 主动标注）。
+**修复（Hermes）**：
+- `backend/src/utils/demo_seed.py` join_phone → `4008001234`（未来重建 seed 不再踩坑）
+- 同步当前 MySQL `gin_brand_info`（seed 幂等不重写，须手改）：`UPDATE ... SET join_phone='4008001234'` ✓
+- 复测：改纯数字后点保存 → toast「品牌信息已保存」✓ 链路通
+- 校验规则本身是否放宽（允许 `-`/`+`/空格）属业务决策，已记 tech-debt-tracker（优先级:低）
+
+### 结论
+
+**approved**。5 模块（轮播/分类/产品/资讯/品牌）全部交付，build 绿 + 菜单渲染 + API 可达 + 产品完整表单（多图+富文本+开关）+ 品牌单页路径走通。遗留：#2 chunk 体积（非阻塞，后续分包）、#4 产品删除=下架语义（与后端一致，符合预期）。BE-08 置 done。

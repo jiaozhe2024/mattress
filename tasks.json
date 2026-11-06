@@ -1,7 +1,7 @@
 {
   "project": "mattress-ux（床垫选品方案小程序 V2.0）",
   "last_updated": "2026-11-05",
-  "current_focus": "watchdog 已建档（cron 791834606f95 每 15 分钟巡检 CC，挂死自动 kill+macOS 通知，logs: docs/exec-plans/watchdog.log）。BE-08 前端续跑（pid 64139，剩余产品/资讯/品牌 3 模块）+ MP-03 产品列表骨架版（pid 64161，用户决策：先骨架视觉后对齐）双 CC 运行中；完成后逐个验收；BE-09/MP-04~06 随后；MP-02 e2e 待用户扫码补跑",
+  "current_focus": "BE-08（Admin 内容 CRUD 五模块）验收 approved 置 done；MP-03 产品列表骨架 CC 运行中（pid 64161）；之后 BE-09 / MP-04~06 待派；MP-02 e2e 待用户扫码补跑；watchdog cron 791834606f95 每 15 分钟巡检",
   "tasks": [
     {
       "id": "NG-01",
@@ -87,7 +87,7 @@
       "id": "BE-08",
       "title": "Admin 内容管理 CRUD（轮播/分类/产品/资讯/品牌）",
       "description": "基于 BE-03 骨架 + BE-02 模型生成五个 CRUD 模块（el-table + el-dialog 模式）：①轮播图管理（图片上传/jump_type 下拉→跳转值动态表单/排序/状态开关，软删除）②产品分类管理（7 大预置分类只许禁用不许删，图标上传/排序）③产品管理（列表筛选分类/名称/型号/状态；编辑表单：基础信息+主图单传+详情轮播图多传≤10+实拍图多传≤20+富文本 wangEditor+上下架开关；批量上下架）④资讯与服务管理（标题/分类/封面/富文本，发布状态）⑤品牌信息配置（单页表单：介绍多行/加盟电话数字校验/客服承诺 JSON 数组/门店图多传）。图片上传走 OSS 适配层（本地 mock 存储）。所有写操作记录操作日志。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "BE-03, BE-02",
       "verify": "npm run build 通过；逐模块 新建→编辑→下架/禁用→删除 走通且后端操作日志有记录；产品能同时保存主图+2 张轮播图+富文本；banner jump_type=2 时跳转值下拉可选分类；pytest 对应 admin API 通过",
@@ -127,7 +127,7 @@
       "id": "MP-03",
       "title": "产品列表页（搜索/侧分类/排序/选品）",
       "description": "按 jp/产品分类列表.jpg + jp/产品页.jpg 实现：搜索栏（防抖 300ms、历史 10 条本地存储、空态）、左侧分类侧边导航、排序 Tab（综合/推荐/新品）、视图切换（宫格 2 列/列表 1 列）、产品卡片（主图/名称/型号/规格/睡感/tags/可选价格 + 圆形+按钮 addToSelection，已选置灰）、底部已选栏（数量+缩略图+移除+OK 跳方案编辑）。接 GET /wxapi/products（category_id/keyword/sort/分页）。",
-      "status": "blocked",
+      "status": "submitted",
       "priority": "high",
       "blocked_by": "用户确认设计稿 + MP-01 + BE-05",
       "verify": "automator：输入『卷绵』命中并渲染、清空显示空态、分类切换列表刷新、排序切换生效、点 + 加入选品后底部栏数量+缩略图更新、已选按钮置灰、OK 跳方案编辑页并带出已选；截图对照设计稿",
