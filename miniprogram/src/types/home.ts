@@ -12,7 +12,11 @@ export interface WxBanner {
 export interface WxCategory {
   id: number;
   name: string;
+  /** 分类入口副文案文字（Q15 文字通道）。 */
+  subtitle: string | null;
   icon: string | null;
+  /** 分类入口整块图片 URL（Q15 图片通道，非空时优先于 name + subtitle 渲染）。 */
+  banner_image: string | null;
   sort: number;
 }
 
