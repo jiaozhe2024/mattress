@@ -1,48 +1,94 @@
 <script setup lang="ts">
 /**
- * 首页（MP-02）。视觉依据 docs/design/figma-exports/01-首页.png + ds-page.png token
- * （navy #1A2260 / yellow #F7C400 / cream #FDFBF5），版块顺序对照 jp/首页.jpg：
- * Banner 轮播 → 7 分类宫格 → 品牌服务横滚 → 资讯/客服入口；悬浮选款按钮常驻。
+ * 首页（MP-02，V3 整块重写）
+ *
+ * 真值来源：docs/design/references/home.png + design-spec/spec.md §5.1 + open-questions Q14/Q15。
+ * 版块顺序：品牌主视觉卡（轮播）→ 2×2 系列卡 + 3 寝具入口 → 乐卡思 · 好眠服务 →
+ * 资讯/客服快捷入口 → 选款 FAB；底部 TabBar 由原生 custom-tab-bar 渲染（首页选中）。
+ *
+ * 数据：GET /wxapi/home（banners）+ GET /wxapi/categories（系列卡前 4 条）。
+ * 跨页传参（分类 / 型号关键词）按核心约定 9 走 Pinia。
  */
 import { onLoad } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
+import { getCategories } from "@/api/product";
 import { getHome } from "@/api/content";
+import SelectFab from "@/components/frame/SelectFab.vue";
+import WechatNav from "@/components/frame/WechatNav.vue";
+import Icon from "@/components/icons/Icon.vue";
+import {
+  BEDDING_ENTRIES,
+  HOME_HERO,
+  HOME_SERVICE_CARDS,
+  HOME_SERVICE_TITLE,
+  QUICK_ENTRIES,
+  bannerIndicatorCount,
+  seriesCardViewsOf,
+  type QuickEntryKey,
+  type SeriesCardView,
+} from "@/components/home/homeModel";
 import { CUSTOMER_SERVICE, PRODUCT_LIST_TAB } from "@/config";
 import { useProductFilterStore } from "@/stores/useProductFilterStore";
-import type { WxArticleSummary, WxBanner, WxCategory, WxHome } from "@/types/home";
+import type { WxBanner, WxCategory } from "@/types/home";
 import { resolveBannerTarget } from "@/utils/jump";
 import { absoluteUrl } from "@/utils/url";
 
 type PageStatus = "loading" | "ready" | "error";
 
 const filterStore = useProductFilterStore();
+
 const pageStatus = ref<PageStatus>("loading");
-const home = ref<WxHome | null>(null);
-const statusBarHeight = ref(20);
+const banners = ref<WxBanner[]>([]);
+const categories = ref<WxCategory[]>([]);
+const failedBannerIds = ref<number[]>([]);
+const failedSeriesIds = ref<number[]>([]);
+const failedServiceKeys = ref<string[]>([]);
+const bannerIndex = ref(0);
+
+const seriesCards = computed(
+  (): SeriesCardView[] => seriesCardViewsOf(categories.value, failedSeriesIds.value)
+);
+
+/** 指示点数量：仅 1 张（或 0 张）时为 0，整块隐藏。 */
+const indicatorCount = computed((): number =>
+  bannerIndicatorCount(banners.value.length)
+);
 
 const isEmptyHome = computed(
   (): boolean =>
-    home.value !== null &&
-    home.value.banners.length === 0 &&
-    home.value.categories.length === 0 &&
-    home.value.services.length === 0
+    pageStatus.value === "ready" &&
+    banners.value.length === 0 &&
+    categories.value.length === 0
 );
 
 onLoad(() => {
-  const info = uni.getSystemInfoSync();
-  statusBarHeight.value = info.statusBarHeight ?? 20;
-  loadHome();
+  void loadHome();
 });
 
 async function loadHome(): Promise<void> {
   pageStatus.value = "loading";
+  let homeFailed = false;
+  let categoriesFailed = false;
+
   try {
-    home.value = await getHome();
-    pageStatus.value = "ready";
+    const data = await getHome();
+    banners.value = [...data.banners].sort(
+      (a, b) => a.sort - b.sort || a.id - b.id
+    );
   } catch {
-    home.value = null;
-    pageStatus.value = "error";
+    banners.value = [];
+    homeFailed = true;
   }
+
+  try {
+    categories.value = await getCategories();
+  } catch {
+    categories.value = [];
+    categoriesFailed = true;
+  }
+
+  // 两个接口全失败才算错误态；任一成功即按已有数据渲染（静态版块始终可显示）
+  pageStatus.value = homeFailed && categoriesFailed ? "error" : "ready";
 }
 
 function goProductList(): void {
@@ -50,9 +96,19 @@ function goProductList(): void {
 }
 
 function goCategory(categoryId: number): void {
-  // 产品列表是 tabBar 页，switchTab 不带参，按核心约定 9 用 Pinia 传分类
+  // 产品列表是 tabBar 页，switchTab 无法带参 → Pinia 传分类（核心约定 9）
   filterStore.requestCategory(categoryId);
   goProductList();
+}
+
+function goBeddingModel(model: string): void {
+  // 寝具入口不是分类：按型号关键词搜索产品（Q15 决议）
+  filterStore.requestKeyword(model);
+  goProductList();
+}
+
+function goNews(): void {
+  uni.navigateTo({ url: "/pages/article/list" });
 }
 
 function onBannerTap(banner: WxBanner): void {
@@ -83,16 +139,30 @@ function onBannerTap(banner: WxBanner): void {
   }
 }
 
-function onCategoryTap(category: WxCategory): void {
-  goCategory(category.id);
+function onBannerChange(event: { detail: { current: number } }): void {
+  bannerIndex.value = event.detail.current;
 }
 
-function onServiceTap(service: WxArticleSummary): void {
-  uni.navigateTo({ url: `/pages/article/detail?id=${service.id}` });
+function onBannerImageError(bannerId: number): void {
+  if (!failedBannerIds.value.includes(bannerId)) {
+    failedBannerIds.value = [...failedBannerIds.value, bannerId];
+  }
 }
 
-function goNews(): void {
-  uni.navigateTo({ url: "/pages/article/list" });
+function onSeriesImageError(categoryId: number): void {
+  if (!failedSeriesIds.value.includes(categoryId)) {
+    failedSeriesIds.value = [...failedSeriesIds.value, categoryId];
+  }
+}
+
+function onServiceImageError(key: string): void {
+  if (!failedServiceKeys.value.includes(key)) {
+    failedServiceKeys.value = [...failedServiceKeys.value, key];
+  }
+}
+
+function isServiceImageVisible(key: string, image: string): boolean {
+  return image.trim() !== "" && !failedServiceKeys.value.includes(key);
 }
 
 interface OpenCustomerServiceChatOptions {
@@ -117,415 +187,281 @@ function onContactTap(): void {
     },
   });
 }
+
+function onQuickEntryTap(key: QuickEntryKey): void {
+  if (key === "news") {
+    goNews();
+    return;
+  }
+  onContactTap();
+}
 </script>
 
 <template>
   <view class="home">
-    <view class="status-bar" :style="'height:' + statusBarHeight + 'px'" />
-    <view class="brand-row">
-      <view class="brand-moon" />
-      <text class="brand-name">乐卡思 LEKASI</text>
-    </view>
-    <view class="search-bar" @tap="goProductList">
-      <view class="search-icon">
-        <view class="search-icon-handle" />
-      </view>
-      <text class="search-placeholder">搜索产品 / 型号</text>
-    </view>
+    <WechatNav title="乐卡思 LEKASI" />
 
-    <view v-if="pageStatus === 'loading'" class="state-box">
-      <text class="state-text">加载中…</text>
+    <view v-if="pageStatus === 'loading'" class="home-state">
+      <text class="home-state-text">加载中…</text>
     </view>
-    <view v-else-if="pageStatus === 'error'" class="state-box">
-      <text class="state-text">首页内容加载失败</text>
-      <view class="state-retry" @tap="loadHome">
-        <text class="state-retry-text">重试</text>
+    <view v-else-if="pageStatus === 'error'" class="home-state">
+      <text class="home-state-text">首页内容加载失败</text>
+      <view class="home-state-retry" @tap="loadHome">
+        <text class="home-state-retry-text">重试</text>
       </view>
     </view>
-    <view v-else-if="isEmptyHome" class="state-box">
-      <text class="state-text">暂无内容</text>
-    </view>
-    <block v-else>
-      <swiper
-        v-if="home && home.banners.length > 0"
-        class="home-banner"
-        autoplay
-        circular
-        :interval="5000"
-        :duration="400"
-        indicator-dots
-        indicator-color="rgba(255, 255, 255, 0.4)"
-        indicator-active-color="#F7C400"
-      >
-        <swiper-item
-          v-for="banner in home.banners"
-          :key="banner.id"
-          class="home-banner-slide"
-          @tap="onBannerTap(banner)"
-        >
-          <view class="banner-fallback">
-            <view class="banner-moon" />
-            <text class="banner-slogan">为好眠，选对床垫</text>
-            <text class="banner-sub">LEKASI · 匠心睡眠 30 年</text>
-          </view>
-          <image
-            class="banner-image"
-            :src="absoluteUrl(banner.image)"
-            mode="aspectFill"
-            lazy-load
-          />
-        </swiper-item>
-      </swiper>
+    <view v-else class="home-body">
+      <view v-if="isEmptyHome" class="home-state">
+        <text class="home-state-text">暂无内容</text>
+      </view>
 
-      <view v-if="home && home.categories.length > 0" class="section">
-        <view class="section-head">
-          <text class="section-title">产品分类</text>
-        </view>
-        <view class="category-grid">
-          <view
-            v-for="category in home.categories"
-            :key="category.id"
-            class="category-cell"
-            @tap="onCategoryTap(category)"
+      <!-- ① 品牌主视觉卡（Q14：保留轮播；banners 为空时退化为纯文案卡） -->
+      <view class="home-hero">
+        <view class="home-hero-text">
+          <text class="home-hero-brand">{{ HOME_HERO.brand }}</text>
+          <text
+            v-for="line in HOME_HERO.titleLines"
+            :key="line"
+            class="home-hero-title"
+            >{{ line }}</text
           >
-            <view class="category-icon">
-              <text class="category-icon-fallback">{{
-                category.name.slice(0, 2)
-              }}</text>
+          <text class="home-hero-subtitle">{{ HOME_HERO.subtitle }}</text>
+        </view>
+        <block v-if="banners.length > 0">
+          <swiper
+            class="home-hero-swiper"
+            autoplay
+            circular
+            :interval="5000"
+            :duration="400"
+            :current="bannerIndex"
+            @change="onBannerChange"
+          >
+            <swiper-item
+              v-for="banner in banners"
+              :key="banner.id"
+              class="home-hero-slide"
+              @tap="onBannerTap(banner)"
+            >
+              <view class="home-hero-placeholder" />
               <image
-                v-if="category.icon"
-                class="category-icon-image"
-                :src="absoluteUrl(category.icon)"
+                v-if="!failedBannerIds.includes(banner.id)"
+                class="home-hero-image"
+                :src="absoluteUrl(banner.image)"
                 mode="aspectFill"
                 lazy-load
+                @error="onBannerImageError(banner.id)"
+              />
+            </swiper-item>
+          </swiper>
+          <view v-if="indicatorCount > 0" class="home-hero-indicator">
+            <view
+              v-for="(banner, index) in banners"
+              :key="banner.id"
+              class="home-hero-dot"
+              :class="{
+                'home-hero-dot--active': index === bannerIndex % banners.length,
+              }"
+            />
+          </view>
+        </block>
+      </view>
+
+      <!-- ② 产品系列入口：2×2 系列卡 + 3 寝具入口 -->
+      <view class="home-series">
+        <view v-if="seriesCards.length > 0" class="home-series-grid">
+          <view
+            v-for="card in seriesCards"
+            :key="card.id"
+            class="home-series-card"
+            @tap="goCategory(card.id)"
+          >
+            <image
+              v-if="card.imageSrc"
+              class="home-series-image"
+              :src="absoluteUrl(card.imageSrc)"
+              mode="aspectFill"
+              lazy-load
+              @error="onSeriesImageError(card.id)"
+            />
+            <view v-else class="home-series-text">
+              <text class="home-series-title">{{ card.title }}</text>
+              <text v-if="card.subtitle !== ''" class="home-series-subtitle">{{
+                card.subtitle
+              }}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="home-bedding-row">
+          <view
+            v-for="entry in BEDDING_ENTRIES"
+            :key="entry.model"
+            class="home-bedding-card"
+            @tap="goBeddingModel(entry.model)"
+          >
+            <text class="home-bedding-model">{{ entry.model }}</text>
+            <text class="home-bedding-name">{{ entry.name }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- ③ 乐卡思 · 好眠服务 -->
+      <view class="home-services">
+        <text class="home-services-title">{{ HOME_SERVICE_TITLE }}</text>
+        <view class="home-services-row">
+          <view
+            v-for="service in HOME_SERVICE_CARDS"
+            :key="service.key"
+            class="home-service-card"
+          >
+            <view class="home-service-media">
+              <view class="home-service-placeholder" />
+              <image
+                v-if="isServiceImageVisible(service.key, service.image)"
+                class="home-service-image"
+                :src="absoluteUrl(service.image)"
+                mode="aspectFill"
+                lazy-load
+                @error="onServiceImageError(service.key)"
               />
             </view>
-            <text class="category-name">{{ category.name }}</text>
-          </view>
-          <view class="category-more">
-            <text class="category-more-title">更多系列</text>
-            <text class="category-more-sub">敬请期待</text>
-          </view>
-        </view>
-      </view>
-
-      <view v-if="home && home.services.length > 0" class="section">
-        <view class="section-head">
-          <text class="section-title">品牌服务</text>
-        </view>
-        <scroll-view class="service-scroll" scroll-x :show-scrollbar="false">
-          <view class="service-track">
-            <view
-              v-for="service in home.services"
-              :key="service.id"
-              class="service-card"
-              @tap="onServiceTap(service)"
-            >
-              <view class="service-cover">
-                <view class="service-moon" />
-                <image
-                  v-if="service.cover"
-                  class="service-cover-image"
-                  :src="absoluteUrl(service.cover)"
-                  mode="aspectFill"
-                  lazy-load
-                />
-              </view>
-              <text class="service-title">{{ service.title }}</text>
+            <view class="home-service-text">
+              <text class="home-service-title">{{ service.title }}</text>
+              <text class="home-service-caption">{{ service.caption }}</text>
             </view>
           </view>
-        </scroll-view>
+        </view>
       </view>
 
-      <view class="entry-row">
-        <view class="entry-card" @tap="goNews">
-          <view class="entry-icon">
-            <text class="entry-icon-text">讯</text>
-          </view>
-          <text class="entry-title">乐卡思资讯</text>
-          <text class="entry-sub">品牌动态与活动</text>
-        </view>
-        <view class="entry-card" @tap="onContactTap">
-          <view class="entry-icon">
-            <text class="entry-icon-text">客</text>
-          </view>
-          <text class="entry-title">联系客服</text>
-          <text class="entry-sub">在线顾问 1v1</text>
+      <!-- ④ 资讯与客服快捷入口 -->
+      <view class="home-entries">
+        <view
+          v-for="entry in QUICK_ENTRIES"
+          :key="entry.key"
+          class="home-entry-card"
+          @tap="onQuickEntryTap(entry.key)"
+        >
+          <Icon :name="entry.icon" :size="21" color="#1a2260" />
+          <text class="home-entry-label">{{ entry.label }}</text>
         </view>
       </view>
-    </block>
+    </view>
 
     <SelectFab />
   </view>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .home {
+  position: relative;
   min-height: 100vh;
-  padding-bottom: 48rpx;
   box-sizing: border-box;
-  background-color: #fdfbf5;
+  background-color: $color-cream;
 }
 
-.status-bar {
-  width: 100%;
-}
-
-.brand-row {
+.home-body {
   display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 24rpx 32rpx;
+  flex-direction: column;
+  gap: 20px;
+  /* 底部留白：内容不被原生 TabBar 与选款 FAB 遮挡 */
+  padding: $space-16 $space-16 90px;
 }
 
-.brand-moon {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 50%;
-  box-shadow: inset -10rpx 10rpx 0 0 #f7c400;
-}
-
-.brand-name {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1a2260;
-}
-
-.search-bar {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  height: 72rpx;
-  margin: 0 32rpx;
-  padding: 0 24rpx;
-  border-radius: 999rpx;
-  background-color: #f4f6fa;
-}
-
-.search-icon {
-  position: relative;
-  width: 26rpx;
-  height: 26rpx;
-  border: 3rpx solid #8a90a3;
-  border-radius: 50%;
-}
-
-.search-icon-handle {
-  position: absolute;
-  right: -9rpx;
-  bottom: -6rpx;
-  width: 12rpx;
-  height: 3rpx;
-  background-color: #8a90a3;
-  transform: rotate(45deg);
-}
-
-.search-placeholder {
-  font-size: 26rpx;
-  color: #8a90a3;
-}
-
-.state-box {
+/* ---------------- 状态（加载/错误/空） ---------------- */
+.home-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24rpx;
-  padding: 120rpx 32rpx;
+  gap: $space-12;
+  padding: 60px $space-16;
 }
 
-.state-text {
-  font-size: 26rpx;
-  color: #8a90a3;
-}
-
-.state-retry {
-  padding: 16rpx 64rpx;
-  border-radius: 999rpx;
-  background-color: #f7c400;
-}
-
-.state-retry-text {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #1a2260;
-}
-
-.home-banner {
-  height: 320rpx;
-  margin: 24rpx 32rpx 0;
-  border-radius: 24rpx;
-}
-
-.home-banner-slide {
-  position: relative;
-  border-radius: 24rpx;
-  overflow: hidden;
-}
-
-.banner-fallback {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16rpx;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #1a2260 0%, #111639 100%);
-}
-
-.banner-moon {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 50%;
-  box-shadow: inset -20rpx 20rpx 0 0 #f7c400;
-}
-
-.banner-slogan {
-  font-size: 44rpx;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.banner-sub {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.banner-image {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.section {
-  margin-top: 48rpx;
-}
-
-.section-head {
-  padding: 0 32rpx 24rpx;
-}
-
-.section-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1e2330;
-}
-
-.category-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24rpx;
-  padding: 0 32rpx;
-}
-
-.category-cell,
-.category-more {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16rpx;
-  width: calc((100% - 24rpx) / 2);
-  padding: 24rpx;
-  border-radius: 24rpx;
-  background-color: #ffffff;
-  box-sizing: border-box;
-}
-
-.category-icon {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 160rpx;
-  border-radius: 16rpx;
-  background-color: #e7eaf6;
-  overflow: hidden;
-}
-
-.category-icon-fallback {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #8890b8;
-}
-
-.category-icon-image {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.category-name {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #1e2330;
+.home-state-text {
+  font-family: $font-family-cn;
+  font-size: $font-13;
+  color: $color-text-3;
   text-align: center;
 }
 
-.category-more {
+.home-state-retry {
+  display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f4f6fa;
+  height: 21px;
+  padding: 0 $space-16;
+  border-radius: $radius-pill;
+  background-color: $color-yellow;
 }
 
-.category-more-title {
-  font-size: 28rpx;
-  color: #8890b8;
+.home-state-retry-text {
+  font-family: $font-family-cn;
+  font-size: $font-12;
+  font-weight: $font-weight-semibold;
+  color: $color-navy;
 }
 
-.category-more-sub {
-  font-size: 22rpx;
-  color: #8a90a3;
+/* ---------------- ① 品牌主视觉卡 ---------------- */
+.home-hero {
+  overflow: hidden;
+  border-radius: $radius-16;
+  background-color: $color-navy;
 }
 
-.service-scroll {
-  width: 100%;
-  white-space: nowrap;
-}
-
-.service-track {
-  display: inline-flex;
-  gap: 24rpx;
-  padding: 0 32rpx 8rpx;
-}
-
-.service-card {
+.home-hero-text {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
-  width: 400rpx;
-  padding: 24rpx;
-  border-radius: 24rpx;
-  background-color: #1a2260;
-  box-sizing: border-box;
+  gap: $space-8;
+  padding: $space-24 $space-24 $space-16;
 }
 
-.service-cover {
+.home-hero-brand {
+  font-family: $font-family-en;
+  font-size: $font-13;
+  font-weight: $font-weight-bold;
+  line-height: 1;
+  letter-spacing: 2px;
+  color: $color-yellow;
+}
+
+.home-hero-title {
+  font-family: $font-family-cn;
+  font-size: $font-30;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-30;
+  color: $color-text-inv;
+}
+
+.home-hero-subtitle {
+  font-family: $font-family-cn;
+  font-size: $font-12;
+  font-weight: $font-weight-regular;
+  line-height: $line-height-12;
+  color: $color-text-inv;
+}
+
+.home-hero-swiper {
+  width: 100%;
+  height: 190px;
+}
+
+.home-hero-slide {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 200rpx;
-  border-radius: 16rpx;
-  background-color: #111639;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
-.service-moon {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 50%;
-  box-shadow: inset -14rpx 14rpx 0 0 #f7c400;
+.home-hero-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: $color-navy-deep;
 }
 
-.service-cover-image {
+.home-hero-image {
   position: absolute;
   top: 0;
   left: 0;
@@ -533,55 +469,216 @@ function onContactTap(): void {
   height: 100%;
 }
 
-.service-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #ffffff;
-  white-space: normal;
-}
-
-.entry-row {
+.home-hero-indicator {
   display: flex;
-  gap: 24rpx;
-  margin: 48rpx 32rpx 0;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: $space-24;
 }
 
-.entry-card {
+.home-hero-dot {
+  width: $space-4;
+  height: $space-4;
+  border-radius: $radius-2;
+  background-color: $color-navy-50;
+}
+
+.home-hero-dot--active {
+  width: $space-16;
+  background-color: $color-yellow;
+}
+
+/* ---------------- ② 系列卡 + 寝具入口 ---------------- */
+.home-series {
+  display: flex;
+  flex-direction: column;
+  gap: $space-8;
+}
+
+.home-series-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.home-series-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc((100% - 5px) / 2);
+  height: 76px;
+  overflow: hidden;
+  border-radius: $radius-8;
+  background-color: $color-text-inv;
+}
+
+.home-series-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.home-series-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 $space-8;
+  box-sizing: border-box;
+}
+
+.home-series-title {
+  font-family: $font-family-cn;
+  font-size: $font-19;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-19;
+  color: $color-navy;
+  text-align: center;
+}
+
+.home-series-subtitle {
+  font-family: $font-family-cn;
+  font-size: $font-11;
+  font-weight: $font-weight-regular;
+  line-height: $line-height-11;
+  color: $color-text-3;
+  text-align: center;
+}
+
+.home-bedding-row {
+  display: flex;
+  gap: 6px;
+}
+
+.home-bedding-card {
   display: flex;
   flex: 1;
   flex-direction: column;
   align-items: center;
-  gap: 8rpx;
-  padding: 32rpx 24rpx;
-  border-radius: 24rpx;
-  background-color: #ffffff;
+  justify-content: center;
+  gap: $space-4;
+  height: 90px;
+  border-radius: $radius-8;
+  background-color: $color-text-inv;
 }
 
-.entry-icon {
+.home-bedding-model {
+  font-family: $font-family-en;
+  font-size: $font-28;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-28;
+  color: $color-navy;
+}
+
+.home-bedding-name {
+  font-family: $font-family-cn;
+  font-size: $font-12;
+  font-weight: $font-weight-regular;
+  line-height: $line-height-12;
+  color: $color-navy;
+}
+
+/* ---------------- ③ 乐卡思 · 好眠服务 ---------------- */
+.home-services {
   display: flex;
+  flex-direction: column;
+  gap: $space-12;
+}
+
+.home-services-title {
+  font-family: $font-family-cn;
+  font-size: $font-17;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-17;
+  color: $color-text-1;
+}
+
+.home-services-row {
+  display: flex;
+  gap: 6px;
+}
+
+.home-service-card {
+  flex: 1;
+  overflow: hidden;
+  border-radius: $radius-8;
+  background-color: $color-text-inv;
+}
+
+.home-service-media {
+  position: relative;
+  width: 100%;
+  height: 80px;
+  overflow: hidden;
+}
+
+.home-service-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: $color-fill;
+}
+
+.home-service-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.home-service-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 6px 10px;
+  box-sizing: border-box;
+}
+
+.home-service-title {
+  font-family: $font-family-cn;
+  font-size: $font-12;
+  font-weight: $font-weight-medium;
+  line-height: $line-height-12;
+  color: $color-navy;
+}
+
+.home-service-caption {
+  font-family: $font-family-cn;
+  font-size: $font-9;
+  font-weight: $font-weight-regular;
+  line-height: $line-height-9;
+  color: $color-text-3;
+}
+
+/* ---------------- ④ 资讯与客服 ---------------- */
+.home-entries {
+  display: flex;
+  gap: $space-8;
+}
+
+.home-entry-card {
+  display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
-  width: 72rpx;
-  height: 72rpx;
-  margin-bottom: 8rpx;
-  border-radius: 50%;
-  background-color: #fff8e1;
+  gap: 10px;
+  height: 62px;
+  border-radius: $radius-8;
+  background-color: $color-yellow-bg;
 }
 
-.entry-icon-text {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1a2260;
-}
-
-.entry-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #1e2330;
-}
-
-.entry-sub {
-  font-size: 22rpx;
-  color: #8a90a3;
+.home-entry-label {
+  font-family: $font-family-cn;
+  font-size: $font-13;
+  font-weight: $font-weight-regular;
+  line-height: $line-height-13;
+  color: $color-navy;
 }
 </style>
