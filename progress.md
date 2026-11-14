@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-11-14 MP-03A 产品分类列表页 验收通过（Hermes 接手补完）
+
+CC 会话 `proc_55cc63efd90a` 在收尾阶段挂死（63 分钟，CPU 15s 仅 +0.11s、10 分钟零写入），代码已写完但未写 sprint-output、未 commit。**Hermes kill 后接手补完，未重派不重做。**
+
+| 交付 | 内容 |
+|---|---|
+| `pages/product/category.vue` | 333 行：系列横幅（navy/radius12/p18/gap6 + h120 图）+ 8 分类入口（h90/radius8/px20/gap12，双通道） |
+| `components/category/categoryModel.ts` | 横幅常量 + `categoryEntryViewsOf` 双通道降级 + `productListUrlOf` |
+| `static/category/banner-mattress.png` | 从 references/product-category.png 裁切（37.9KB，待真实素材替换） |
+| tab 归属 | `tabBar.list[1]` → `pages/product/category`；config 拆 `PRODUCT_LIST_TAB`(tab) 与 `PRODUCT_LIST_PAGE`(普通页) |
+| `pages/product/list.vue` | 适配脱离 tabBar：navigateTo 带参 + WechatNav + onLoad 消费 query.category_id |
+
+### Hermes 独立复跑
+- `npx vitest run` → **253 passed / 21 files**（MP-02 基线 226，+27）
+- `npm run type-check` → exit 0
+- `npm run build:mp-weixin` → DONE 0 err
+- pages.json 实测：tabBar `[0]index [1]product/category [2]user`，pages 数组同时含 list 与 category
+- 硬编码 hex 色值 0 处；文案与 spec §5.2 逐字一致
+- automator 动态段仍阻塞（开发者工具扫码+服务端口），未伪造
+
+### Hermes 主动整改：token 间距阶梯缺失
+核对时发现「硬编码色值 0 处」的检查**只覆盖了 hex，漏了裸数值间距**。实际全站有 2/3/5/6/10/18/20/60px 共 6 个文件写裸值——根因是 `design-tokens.md` 的间距节只列了布局级 4/8/12/16/24/32，V3 稿的组件内部微间距没进 token。
+
+已补 `$space-2..60` 完整阶梯 + 同名 CSS 自定义属性，批量替换后**全站裸 px 间距清零**，253 测试 + build 复跑无回归。
+
+**教训**：验收「无硬编码」不能只 grep hex，要同时扫 `gap|padding|margin` 的裸数值。
+
+---
+
 ## 2026-11-14 MP-02 首页 V3 还原 验收通过（Hermes）
 
 CC 派活 `proc_69d4cf83e08d`，跑 55 分钟自然结束（**未被看门狗误杀**——CPU 时间采样确认持续增长，验证了 `addf4cd` 修复生效）。6 个分步提交：

@@ -158,7 +158,7 @@
       "id": "MP-03A",
       "title": "产品分类列表页（V3 新页：系列横幅 + 8 分类入口）",
       "description": "【MP-02 验收后派】新建 `pages/product/category.vue` 并**接管 tabBar「产品」身份**（`pages.json` tabBar 第二项 pagePath 改为 `pages/product/category`），依据 `references/product-category.png` + `spec.md §5.2`。①系列横幅：bg navy 圆角 12；文案区 p18 gap6 —— `LEKASI 乐卡思`（Inter Bold 12 yellow）、`9M 特制床垫`（Bold 21 textInv 行高 1.45）、`让每一次休息，都更舒适`（Regular 11 textInv）；床垫展示图 h120 object-cover。②**8 个分类入口**（数据取 `GET /wxapi/categories`，BE-10 已落八分类）：白底 h90 圆角 8、px20 gap12、右箭头 chevron-right 20×20；**渲染规则（用户 2026-11-14 决策）：`banner_image` 非空时优先渲染整块图片（占满入口左侧内容区，保持比例不拉伸），为空时降级渲染文字 —— 标题 Bold 19 navy + 说明 Regular 11 text3 取 `subtitle`**。③点分类 → `navigateTo /pages/product/list?category_id={id}`（带参）。④底部 TabBar three，「产品」选中。⑤选款 FAB 常驻（矩形胶囊版）。⑥**不实现版本标识条**。⑦交付 vitest（列表渲染项数、点击带参、subtitle 渲染）+ `scripts/e2e/product-category.auto.js`。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "MP-07, BE-10",
       "verify": "`npm run build:mp-weixin` 0 error；pages.json tabBar 第二项已指向 pages/product/category；e2e 断言：系列横幅存在、分类入口数=8、每条标题与副文案均非空；点击第 1 个分类后跳 /pages/product/list 且 category_id 与所点分类一致；截图与 `references/product-category.png` 逐区块比对；无版本标识条",
