@@ -15,3 +15,7 @@ backend/admin/dist/
 
 # e2e 自动化截图（生成物）
 docs/exec-plans/screenshots/
+
+# 看门狗运行时日志（生成物）
+docs/exec-plans/watchdog.log
+docs/exec-plans/watchdog.log.last

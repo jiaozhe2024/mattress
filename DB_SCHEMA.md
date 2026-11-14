@@ -36,17 +36,21 @@ gin_banner / gin_article / gin_brand_info           独立内容表（无外键�
 
 ## 1. `gin_product_category` — 产品分类表
 
-模型：`models/product.py::GinProductCategory`。7 大预置分类（seed），**只许禁用不许删**（BE-08）。
+模型：`models/product.py::GinProductCategory`。V3 定稿 8 个分类（seed，用户 2026-11-14 决策），**只许禁用不许删**（BE-08）。
 
 | 字段 | 类型 | 约束/默认 | 说明 |
 |------|------|-----------|------|
 | id | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| name | VARCHAR(50) | NOT NULL | 分类名称 |
+| name | VARCHAR(50) | NOT NULL | 分类名称（入口标题文字） |
+| subtitle | VARCHAR(100) | NULL | 分类副文案文字（入口说明行，如「六大专属　分龄深睡」）**BE-10 新增** |
 | icon | VARCHAR(255) | NULL | 分类图标 URL |
+| banner_image | VARCHAR(255) | NULL | 分类入口图片 URL（标题+文案做成图片时的整块图片）**BE-10 新增** |
 | parent_id | BIGINT | NULL | 父分类 ID（**预留**，V2.0 不启用层级） |
 | sort | INT | NOT NULL, 应用默认 0 | 排序值，越小越靠前 |
 | status | INT | NOT NULL, 应用默认 1 | 0 禁用 / 1 启用 |
 | created_at / updated_at | DATETIME | NOT NULL | 见通用约定 |
+
+渲染规则（前端）：分类入口**有 `banner_image` 时优先渲染图片**，无图时降级渲染 `name` + `subtitle` 文字。两者都由接口返回，前端不做取舍判断以外的逻辑。
 
 索引：`ix_gin_product_category_sort (sort)`、`ix_gin_product_category_status (status)`、`ix_gin_product_category_id`、`ix_gin_product_category_created_at`、`ix_gin_product_category_updated_at`
 

@@ -4,6 +4,54 @@
 
 ---
 
+## 2026-11-14 V3 设计基线落地启动 + BE-10 验收通过（Hermes）
+
+**背景**：用户更新设计文档，`docs/design/` 新增 LEKASI V3 基线包（10 张 `references/*.png` + `spec.md` + `design-tokens.md` + `open-questions.md` + `visual-checklist.md`）。V3 与既有实现结构冲突，用户 2026-11-14 决策如下：
+
+| 决策 | 结论 |
+|---|---|
+| MP-02/MP-03 返工 | 全部按 V3 重做，先全局层再逐页 |
+| 分类数据 | 改 seed 为 V3 八分类（非 8 个以外） |
+| 首页轮播 | **保留**（覆盖 spec.md §8「不实现轮播」该条） |
+| 导航实现 | 全站 navigationStyle=custom，只自绘 44px 标题导航，状态栏/胶囊交系统 |
+| 分类副文案 | 文字 + 图片双通道，接口都返回，**有图优先显示图、无图降级文字**（本轮 banner_image 全 null） |
+| 寝具 3 入口 | 非独立分类，点击跳产品页按型号搜索（keyword 9B/9D/9P） |
+| 派发节奏 | 先 BE-10 + MP-07 → MP-02 → 验收后再逐页 |
+
+**tasks.json 全套重排**（24 个任务）：
+- 取消：MP-03（把分类列表与产品页混为一页）、MP-05（缺独立选品页）→ 注明承接方
+- 新增：BE-10（分类双通道字段 + V3 seed）、MP-07（V3 全局复用层）
+- 拆分：MP-03A/03B、MP-05A/B/C/D
+- 返工：MP-02、MP-06
+
+**文档同步**：DB_SCHEMA.md 第 1 节（subtitle/banner_image + 渲染规则）、open-questions.md 新增 Q14/Q15、AGENTS.md 约定 6 补读清单并明确 jp/ 作废、新建 jp/README.md 标注为 V2.0 旧稿存档。
+
+### BE-10 验收通过（Hermes 独立复跑，全部实测）
+- commit `0f15b17`；迁移 `be10cat2f7a1` 挂 `a3f7c9d21e05` 之后，MySQL 实测 `subtitle varchar(100) NULL` + `banner_image varchar(255) NULL` 两列存在
+- `curl /wxapi/categories` = 8 条，sort 1..8 与定稿逐条一致，8 条 subtitle 非空、banner_image 全 null
+- `curl /wxapi/products?size=50` = 8 条，category_name 覆盖八分类全集，spec 全 `1800 × 2000 mm`，sleep_feel 全 `舒适睡感`
+- `curl /wxapi/home` categories=8 且带两字段
+- pytest `138 passed, 1 skipped`（skip 为基座 sensitive-word 既有）
+- **干净库隔离验证**：删 test.db 后单跑 wxapi_content 26 / admin_content 28 / business_models 6 全绿 → 证明 BE-06 记录的 sqlite 索引撞名技术债确实已修（CC 显式命名 `ix_gin_product_category_fk`）
+- CC 顺手修正两处过期测试夹具（品牌电话 4008001234、旧型号名），均为测试层，未动业务逻辑
+- **我方描述瑕疵**：我给 CC 的指令写「subtitle 用全角空格分隔两段」，但分类 5/6/7 定稿本就单段；CC 按定稿值落库、只对 1/2/3/4/8 校验全角空格，处理正确
+- **遗留**：Admin 分类页浏览器交互走查（填副文案/点上传/缩略图）未做，build 与 API 链路已通；8 条 banner_image 待设计出图后由 Admin 上传
+
+MP-07 同期并行执行中（前端 CC，只 add miniprogram/ 避免 git 冲突）。
+
+### MP-07 验收通过（Hermes 接手补完）
+- **CC 被 cc-watchdog 判挂死 SIGKILL**（`[14:50:08] KILL pid=18952 etime=01:00:04`）——跑满 60 分钟触发看门狗阈值。但**代码实际已写完**，只差 sprint-output 与 commit。Hermes 接手补完。
+- commit `abb35a4`；183 tests passed（新增 6 文件 99 用例）；build 0 error
+- 交付：`tokens.scss`（15 色/2 投影/11 圆角/16 档字号配行高/6 间距，只声明变量不输出 CSS 规则）、`WechatNav`（h44，一级 LEKASI / 二级返回，热区 44×44）、`SafeArea`（`max(22px, env(safe-area-inset-bottom))`）、`TabBar`（three/two 同一组件 variant，Q1 决议）、`Icon.vue`（15 个内联 SVG，不引第三方包）、`navLayout.ts`（胶囊反推 + 双 API try/catch + 兜底 44+32 + fallback 标记）
+- pages.json 全站 7 页 `navigationStyle=custom`、`tabBar.custom=true`、custom-tab-bar 四件套 + 6 张图标
+- **Hermes 修正 CC 遗留违例**：4 个全局组件把色值/字体族硬编码在 `<style>` 里未引 token（违反 tokens.scss 自己的「页面层禁止自定义色值」），已全部改为 `$color-*` / `$font-*` / `$radius-*`；Icon 的 color prop 等 JS 运行时值属合理例外保留
+- **遗留 1**：automator 动态走查被微信开发者工具扫码+服务端口前置阻塞（exit 124 超时），静态断言 4/4 过；像素级截图比对同待解锁
+- **遗留 2**：`pages/frame/preview` 是自建校验临时页，**上线前应删除**
+- **遗留 3**：TabBar `two` 版暂无页面使用，等 MP-03B / MP-04 落地验证
+- **看门狗副作用提示**：60 分钟阈值对"大任务收尾阶段"偏激进（本次代码已完成却被杀）。后续派大任务时应在任务描述里要求 CC 尽早 commit，或临时调高 `STALE_MIN`
+
+---
+
 ## 2026-11-14 BE-10 分类副文案字段 + V3 演示数据重写（LEKASI 八分类）（submitted，待验收）
 - `gin_product_category` 增 `subtitle VARCHAR(100) NULL` + `banner_image VARCHAR(255) NULL`（alembic `be10cat2f7a1`，down_revision `a3f7c9d21e05`）；Q15 双通道：有图优先 banner_image，无图降级 name+subtitle
 - 贯通：admin_content（Create/Update/Out）+ wx_content（WxCategoryOut）+ 两个 service 的 `_category_out`；`PRESET_CATEGORY_NAMES` 派生自 DEMO_CATEGORIES 自动变 8 条（仅注释/错误文案 7 大→8 大）

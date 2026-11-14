@@ -27,6 +27,19 @@
 ## Commit 格式
 `type(scope): 描述`，type ∈ feat/fix/refactor/test/docs/chore；如 `feat(wxapi): 方案 CRUD 与快照生成`
 
+## 小程序前端约定（MP-02 落地回填）
+- API 层：`src/api/<domain>.ts`（如 api/content.ts），统一走 utils/request.ts 的 get/post/put/del；页面自管 loading/empty/error 三态时传 `{ silent: true }` 避免重复 toast
+- 资源 URL：后端图片字段为相对路径（/uploads/...），一律经 `utils/url.ts absoluteUrl()` 补全（VITE_ASSET_BASE_URL）；OSS 适配层落地前 dev 环境图片 404，UI 必须有占位回退层
+- 跳转：tabBar 页一律 switchTab（不带参），跨页传参走 Pinia（如 useProductFilterStore.requestedCategoryId），禁止 storage/全局变量（核心约定 9）
+- banner 跳转分发：`utils/jump.ts resolveBannerTarget()` 纯函数（jump_type 1 无 2 分类 3 产品 4 外链，非法值 → invalid），单测覆盖
+
+## 设计 token（来源 docs/design/figma-exports/ds-page.png，LEKASI 品牌）
+- 色板：navy 主色 #1A2260 / navyDeep #111639 / yellow 强调 #F7C400 / yellowHover #E0B000 / yellowBg #FFF8E1 / cream 背景 #FDFBF5 / navySoft #E7EAF6 / navy50 #8890B8
+- 灰阶：text1 #1E2330 / text2 #4A5165 / text3 #8A90A3 / line #E9ECF2 / fill #F4F6FA / textInv #FFFFFF
+- 功能：success #3FA96C / warning #EE9B2E / danger #E5573D / feelBg 睡感 #FFF3C4 / feelTx #6B4E00
+- 字号（px，行高 1.45；rpx=px×2）：H1 24 / H2 20 / H3 16 / BODY 14 / CAPTION 13 / LABEL 11；标题 SemiBold、正文 Regular
+- 间距：4/8/12/16/24/32 px；卡片圆角 12px、内部块 8px、胶囊 999px
+- 悬浮选款按钮：Figma ds 取 yellow #F7C400 + navy 角标（取代 aaa.md §3.1.2 早期品牌金 #D4A574，品牌视觉以 LEKASI 设计稿为准；尺寸仍按 aaa.md 56rpx 圆形）
+
 ## 待回填
-- 小程序 src/utils 工具函数命名与导出约定（首个模块落地后补充）
-- 设计 token（色板/字号/间距）以 docs/design/ 与设计稿为准，落地后在此回填取值
+- 小程序 src/utils 后续工具模块沿用 camelCase 纯函数 + vitest 单测（jump/url 已落地）

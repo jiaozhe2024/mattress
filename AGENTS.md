@@ -1,7 +1,15 @@
+<!--
+ * @Author: jiaozhe undefined
+ * @Date: 2026-11-14 12:50:04
+ * @LastEditors: jiaozhe undefined
+ * @LastEditTime: 2026-11-14 12:52:00
+ * @FilePath: /mattress-ux/AGENTS.md
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+-->
 # 床垫选品方案小程序 (mattress-ux) — Agent 工作指南
 
 ## 这是什么项目
-面向 **B 端导购/经销商** 的床垫销售赋能微信小程序：Uni-app (Vue3) 小程序 + FastAPI 后端。核心链路：产品数字化展示 → 客户定制方案快速生成（多方案管理）→ 方案微信一键分享裂变。**明确不做** C 端下单/支付/物流/会员（aaa.md §1.2）。商用项目，UI 由 Designer 在 Figma 出稿（参考图见 jp/），CC 开发，Hermes 独立验收。
+面向 **B 端导购/经销商** 的床垫销售赋能微信小程序：Uni-app (Vue3) 小程序 + FastAPI 后端。核心链路：产品数字化展示 → 客户定制方案快速生成（多方案管理）→ 方案微信一键分享裂变。**明确不做** C 端下单/支付/物流/会员（aaa.md §1.2）。商用项目，UI 由 Designer 在 Figma 出稿，CC 开发，Hermes 独立验收。品牌 **LEKASI 乐卡思**。
 
 ## 快速定向
 - 工作目录：项目根 = /Users/jiaozhe/own/mattress-ux
@@ -27,7 +35,8 @@
 | 命名规则、代码风格 | docs/CONVENTIONS.md |
 | 技术选型原因 | docs/TECH_DECISIONS.md |
 | 什么叫"完成" | docs/QUALITY.md |
-| Figma 设计交付约定 | docs/design/figma-handoff.md |
+| **LEKASI V3 设计基线（UI 还原依据，逐页精确规格 + token 真值）** | **docs/design/design-pack-readme.md** → 先读其顶部「给 CC 的第一句话」 |
+| Figma 设计交付约定（V2.0 旧版，仅流程约定仍有效） | docs/design/figma-handoff.md |
 | 当前进行中的计划 | docs/exec-plans/active/ |
 | 待开发功能列表 | docs/exec-plans/backlog.md |
 | 已知技术债务 | docs/exec-plans/tech-debt-tracker.md |
@@ -38,7 +47,7 @@
 3. 搜索用 MySQL FULLTEXT/LIKE，数据量 <10 万禁止引入 Elasticsearch。
 4. 微信真实 API（wx.login/code2session、订阅消息）在 dev/自动化环境必须 mock（固定测试 openid），解析逻辑用单测覆盖。
 5. 每个页面/功能交付时必须同时交付 scripts/e2e/<功能>.auto.js（miniprogram-automator 脚本），与页面同 commit。
-6. CC 实现任何 UI 页面前，先读 docs/design/figma-handoff.md 和任务中挂载的设计稿链接/token/参考图（jp/）。
+6. CC 实现任何 UI 页面前，先读 **docs/design/design-pack-readme.md（LEKASI V3 设计基线）** → `design-spec/spec.md`（逐页精确规格）+ `design-spec/design-tokens.md`（token 真值）+ `references/*.png`（10 张视觉基线）+ `open-questions.md`（13+2 条疑问与决议）+ `acceptance/visual-checklist.md`（自检清单），以及任务中挂载的设计稿链接。**品牌视觉以 LEKASI 稿为准（yellow #F7C400 + navy #1A2260）。`aaa.md` §3.1.2 的品牌金 #D4A574、`design-brief.md` 的「宝顿」、`jp/` 目录全部图片均为 V2.0 旧记录，已作废，禁止引用。**
 7. 商品交易（订单/支付/购物车）不在 V2.0 范围，不要实现、不要设计表。
 8. 异步红线：严禁在 FastAPI 的 async 路由中调用同步库（requests、time.sleep、同步 Pillow）；所有外部调用必须用 httpx.AsyncClient，海报生成等耗时操作必须扔进 arq 异步队列，避免阻塞主线程。
 9. 小程序状态管理：多清单选品逻辑必须用 Pinia（useSelectionStore：当前方案/清单 ID、已选商品列表、addToSelection/removeProduct），严禁用 uni.setStorageSync 或全局变量在页面间传递选品数据，否则参数对比/方案生成功能无法实现。
