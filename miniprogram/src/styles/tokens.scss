@@ -1,0 +1,246 @@
+/**
+ * LEKASI V3 设计令牌（唯一真值来源）
+ *
+ * 依据：docs/design/design-spec/design-tokens.md（Figma Local Variables 实测值）
+ * 约定：
+ *   - 本文件只允许声明变量 / 函数 / mixin，禁止输出任何 CSS 规则，否则会被
+ *     uni.scss 注入到每个组件后重复打包。
+ *   - 设计基准 375px 宽；1 设计 px = 2rpx（750 设计宽）。需要随屏宽缩放时用 px2rpx()，
+ *     微信系统尺寸（状态栏/胶囊/TabBar）保持 px。
+ *   - 页面层禁止自定义色值，一律引用本文件变量或同名 CSS 自定义属性。
+ *
+ * 变更本文件必须同步 tests/tokens.test.ts 与 docs/design/design-spec/design-tokens.md。
+ */
+
+/* ---------------- 颜色：Figma 已登记变量 ---------------- */
+$color-navy: #1a2260; // color/navy
+$color-navy-soft: #e7eaf6; // color/navySoft
+$color-navy-50: #8890b8; // color/navy50
+$color-yellow: #f7c400; // color/yellow
+$color-yellow-bg: #fff8e1; // color/yellowBg
+$color-cream: #fdfbf5; // color/cream
+$color-text-1: #1e2330; // color/text1
+$color-text-2: #4a5165; // color/text2
+$color-text-3: #8a90a3; // color/text3
+$color-text-inv: #ffffff; // color/textInv
+$color-line: #e9ecf2; // color/line
+
+/* ---------------- 颜色：硬编码实测值（Figma 未登记变量） ---------------- */
+$color-fill: #f4f6fa; // color/fill
+$color-yellow-soft: #fff3c4; // color/yellowSoft
+$color-yellow-deep: #6b4e00; // color/yellowDeep
+$color-navy-deep: #111639; // color/navyDeep
+
+/* ---------------- 投影 ---------------- */
+$shadow-card: 0 4px 8px rgba(26, 34, 96, 0.06); // shadow/card
+$shadow-fab: 0 6px 8px rgba(26, 34, 96, 0.25); // shadow/fab
+
+/* ---------------- 圆角（含未登记实测值） ---------------- */
+$radius-2: 2px; // 排序指示条
+$radius-4: 4px; // 轮播点、已选缩略图、查看详情标签
+$radius-6: 6px; // 方案卡封面、详情标签
+$radius-8: 8px; // 小卡片/分类入口/服务卡
+$radius-11: 11px; // 舒适睡感标签（h22 半高）
+$radius-12: 12px; // 产品卡/分类横幅/操作条上侧
+$radius-16: 16px; // 首页品牌主视觉大卡
+$radius-18: 18px; // 搜索框
+$radius-20: 20px; // 胶囊按钮
+$radius-26: 26px; // 详情页圆形选款按钮（52×52）
+$radius-pill: 999px; // 全圆角（胶囊/圆形兜底）
+
+/* ---------------- 字体族 / 字重 ---------------- */
+$font-family-cn: "Noto Sans SC", "PingFang SC", "Helvetica Neue", sans-serif;
+$font-family-en: "Inter", "Helvetica Neue", Arial, sans-serif;
+
+$font-weight-regular: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+/* ---------------- 字号阶梯（实测） ---------------- */
+$font-31: 31px;
+$font-30: 30px;
+$font-28: 28px;
+$font-27: 27px;
+$font-23: 23px;
+$font-21: 21px;
+$font-19: 19px;
+$font-18: 18px;
+$font-17: 17px;
+$font-15: 15px;
+$font-14: 14px;
+$font-13: 13px;
+$font-12: 12px;
+$font-11: 11px;
+$font-10: 10px;
+$font-9: 9px;
+
+/* ---------------- 行高（对应字号；多值场景取 design-tokens 首个值） ---------------- */
+$line-height-31: normal;
+$line-height-30: 1.25;
+$line-height-28: normal; // 原稿标注「—」，按 normal 落值
+$line-height-27: normal;
+$line-height-23: normal;
+$line-height-21: 1.45;
+$line-height-19: 1.45;
+$line-height-18: 1.45;
+$line-height-17: 1.45;
+$line-height-15: normal;
+$line-height-14: 1.45;
+$line-height-13: 1.5;
+$line-height-12: 1.45;
+$line-height-11: 1.45;
+$line-height-10: 1.5;
+$line-height-9: 1.45;
+
+/* 固定行高（design-tokens 多值场景中的 px 值） ---------------- */
+$line-height-15-fixed: 22px;
+$line-height-14-fixed: 20px;
+$line-height-13-fixed: 19px;
+
+/* ---------------- 间距 ---------------- */
+$space-4: 4px;
+$space-8: 8px;
+$space-12: 12px;
+$space-16: 16px;
+$space-24: 24px;
+$space-32: 32px;
+
+/* ---------------- 全局结构尺寸 ---------------- */
+$status-bar-height: 32px; // 微信状态栏（设计基准；运行时用系统值）
+$nav-title-height: 44px; // 微信标题导航
+$nav-total-height: 76px; // 状态栏 + 标题导航
+$nav-padding-x: 16px;
+$nav-left-slot-width: 60px;
+$capsule-width: 76px;
+$capsule-height: 28px;
+$tabbar-height: 58px;
+$tabbar-padding-x: 28px;
+$tabbar-item-width: 64px;
+$tabbar-item-gap: 3px;
+$tabbar-icon-size: 24px;
+$tabbar-label-size: 10px;
+$safe-area-height: 22px;
+$gesture-bar-width: 120px;
+$gesture-bar-height: 4px;
+$gesture-bar-radius: 4px;
+$version-bar-height: 24px; // Q12 版本标识条：仅登记，不实现
+
+/* ---------------- 工具函数 / mixin ---------------- */
+
+/// 设计 px → rpx（750 设计宽，1px = 2rpx）。
+@function px2rpx($px) {
+  @return $px * 2rpx;
+}
+
+/// 输出全量 CSS 自定义属性。只在 App.vue 的 page 选择器内 include 一次。
+@mixin token-css-vars {
+  /* 颜色 */
+  --color-navy: #1a2260;
+  --color-navy-soft: #e7eaf6;
+  --color-navy-50: #8890b8;
+  --color-yellow: #f7c400;
+  --color-yellow-bg: #fff8e1;
+  --color-cream: #fdfbf5;
+  --color-text-1: #1e2330;
+  --color-text-2: #4a5165;
+  --color-text-3: #8a90a3;
+  --color-text-inv: #ffffff;
+  --color-line: #e9ecf2;
+  --color-fill: #f4f6fa;
+  --color-yellow-soft: #fff3c4;
+  --color-yellow-deep: #6b4e00;
+  --color-navy-deep: #111639;
+
+  /* 投影 */
+  --shadow-card: 0 4px 8px rgba(26, 34, 96, 0.06);
+  --shadow-fab: 0 6px 8px rgba(26, 34, 96, 0.25);
+
+  /* 圆角 */
+  --radius-2: 2px;
+  --radius-4: 4px;
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-11: 11px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-18: 18px;
+  --radius-20: 20px;
+  --radius-26: 26px;
+  --radius-pill: 999px;
+
+  /* 字体族 / 字重 */
+  --font-family-cn: "Noto Sans SC", "PingFang SC", "Helvetica Neue", sans-serif;
+  --font-family-en: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* 字号阶梯 */
+  --font-31: 31px;
+  --font-30: 30px;
+  --font-28: 28px;
+  --font-27: 27px;
+  --font-23: 23px;
+  --font-21: 21px;
+  --font-19: 19px;
+  --font-18: 18px;
+  --font-17: 17px;
+  --font-15: 15px;
+  --font-14: 14px;
+  --font-13: 13px;
+  --font-12: 12px;
+  --font-11: 11px;
+  --font-10: 10px;
+  --font-9: 9px;
+
+  /* 行高 */
+  --line-height-31: normal;
+  --line-height-30: 1.25;
+  --line-height-28: normal;
+  --line-height-27: normal;
+  --line-height-23: normal;
+  --line-height-21: 1.45;
+  --line-height-19: 1.45;
+  --line-height-18: 1.45;
+  --line-height-17: 1.45;
+  --line-height-15: normal;
+  --line-height-14: 1.45;
+  --line-height-13: 1.5;
+  --line-height-12: 1.45;
+  --line-height-11: 1.45;
+  --line-height-10: 1.5;
+  --line-height-9: 1.45;
+  --line-height-15-fixed: 22px;
+  --line-height-14-fixed: 20px;
+  --line-height-13-fixed: 19px;
+
+  /* 间距 */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+
+  /* 全局结构尺寸 */
+  --status-bar-height: 32px;
+  --nav-title-height: 44px;
+  --nav-total-height: 76px;
+  --nav-padding-x: 16px;
+  --nav-left-slot-width: 60px;
+  --capsule-width: 76px;
+  --capsule-height: 28px;
+  --tabbar-height: 58px;
+  --tabbar-padding-x: 28px;
+  --tabbar-item-width: 64px;
+  --tabbar-item-gap: 3px;
+  --tabbar-icon-size: 24px;
+  --tabbar-label-size: 10px;
+  --safe-area-height: 22px;
+  --gesture-bar-width: 120px;
+  --gesture-bar-height: 4px;
+  --gesture-bar-radius: 4px;
+  --version-bar-height: 24px;
+}

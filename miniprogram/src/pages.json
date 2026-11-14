@@ -10,55 +10,75 @@
     {
       "path": "pages/product/list",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "产品中心"
       }
     },
     {
       "path": "pages/user/index",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "我的"
       }
     },
     {
       "path": "pages/article/list",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "品牌资讯"
       }
     },
     {
       "path": "pages/article/detail",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "资讯详情"
       }
     },
     {
       "path": "pages/webview/index",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "网页详情"
+      }
+    },
+    {
+      "path": "pages/frame/preview",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "全局层校验"
       }
     }
   ],
   "tabBar": {
-    "color": "#8A90A3",
-    "selectedColor": "#1A2260",
+    "custom": true,
+    "color": "#4a5165",
+    "selectedColor": "#1a2260",
     "backgroundColor": "#ffffff",
     "borderStyle": "black",
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "首页"
+        "text": "首页",
+        "iconPath": "static/tabbar/home-normal.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
       },
       {
         "pagePath": "pages/product/list",
-        "text": "产品"
+        "text": "产品",
+        "iconPath": "static/tabbar/grid-normal.png",
+        "selectedIconPath": "static/tabbar/grid-active.png"
       },
       {
         "pagePath": "pages/user/index",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "static/tabbar/user-normal.png",
+        "selectedIconPath": "static/tabbar/user-active.png"
       }
     ]
   },
   "globalStyle": {
+    "navigationStyle": "custom",
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "床垫选品方案",
     "navigationBarBackgroundColor": "#FDFBF5",

@@ -8,9 +8,10 @@ onLaunch(() => {
 });
 </script>
 
-<style>
-/* 设计 token cream 背景（docs/design/figma-exports/ds-page.png） */
+<style lang="scss">
+/* 设计 token 的唯一 CSS 自定义属性出口（真值见 styles/tokens.scss） */
 page {
-  background-color: #fdfbf5;
+  @include token-css-vars;
+  background-color: $color-cream;
 }
 </style>

@@ -1,0 +1,23 @@
+<!--
+  LEKASI 底部导航（微信原生 custom-tab-bar，three 变体）
+
+  视觉真值：components/frame/TabBar.vue（variant=three）
+  规格：h58 / px28 / 上边框 1px #e9ecf2 / 单项宽 64 / gap3 / 图标 24 / 文字 10px
+       选中 #1a2260 不透明；未选中 #4a5165 + opacity 60%
+  图标：static/tabbar/*.png（由 scripts/gen-tabbar-icons.mjs 从 lucide path 预渲染）
+-->
+<cover-view class="tabbar">
+  <cover-view
+    wx:for="{{list}}"
+    wx:key="key"
+    class="tabbar-item {{selected === index ? 'tabbar-item--active' : ''}}"
+    data-index="{{index}}"
+    bindtap="onTap"
+  >
+    <cover-image
+      class="tabbar-icon"
+      src="{{selected === index ? item.activeIcon : item.icon}}"
+    />
+    <cover-view class="tabbar-label">{{item.text}}</cover-view>
+  </cover-view>
+</cover-view>
