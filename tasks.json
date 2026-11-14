@@ -168,7 +168,7 @@
       "id": "MP-03B",
       "title": "产品页（V3 还原：搜索 + 排序 + 2 列网格，去掉侧栏分类）",
       "description": "【MP-02 验收后派，可与 MP-03A 同批】**重写 `pages/product/list.vue`** 为 V3 产品页（二级页），依据 `references/product-list.png` + `spec.md §5.3`。旧实现的**左侧分类侧边导航、视图切换的列表视图、底部已选栏**在 V3 产品页均不存在（侧栏与已选栏属选品页 MP-05A），**必须移除**；保留可复用数据层：`api/product.ts`、`composables/useProductList.ts`、`utils/debounce.ts`、`utils/searchHistory.ts`。①导航 WechatNav 二级页，标题 = 分类名（onLoad 取 category_id → 由 /wxapi/categories 解析名称，取不到用 query 直传名称兜底）。②搜索区域 pt16 px16 gap12：搜索框 311×36 圆角 18 bg #f4f6fa，icon/search 16×16 left14 top10，占位 `请输入搜索的商品` Regular 13 #8a90a3 left38 top9 行高 19；右侧 list 图标 22×22（Q6 DEFERRED：保留可点，切换后仍为网格，不做列表视图）。③排序行 h38 gap34：`综合` Bold 14 navy + 下方 28×3 圆角 2 bg yellow 指示条 gap7；`推荐` / `新品` Regular 14 text2。排序映射沿用既有 SORT_TABS（推荐 → comprehensive 回退，Q5 DEFERRED），改后端时只动映射表。④产品列表 bg #f4f6fa p16 gap12，每行 gap9 两列：产品卡 167×246 白底圆角 12 shadow/card —— 主图 167×150 object-cover 贴顶；内容区 left12 top156 143×82 —— 产品名 Medium 13 text1 行高 1.45、规格 Inter Regular 10 text3 行高 1.5 top21、标签行 h22 top38（`舒适睡感` 72×22 圆角 11 bg #fff3c4 文字 Medium 11 #6b4e00 行高 16；`查看详情` 58×20 圆角 4 bg #f4f6fa 文字 Regular 10 #8a90a3 行高 15 left78）。⑤交互：点卡片或「查看详情」→ `/pages/product/detail?id=`（MP-04 未建时 fail 回退 toast，不留死链）；搜索 300ms 防抖 + 历史 10 条；触底 loadMore 保留；loading/error/empty 三态保留。⑥底部 TabBar two（首页 / 返回）。⑦**不实现版本标识条**。⑧交付 vitest + **重写** `scripts/e2e/product-list.auto.js`。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "MP-07, BE-10",
       "verify": "`npm run build:mp-weixin` 0 error；页面内**无**左侧分类侧边导航、**无**底部已选栏、**无**列表视图切换产物；e2e 断言：搜索框占位文案正确、排序三项存在且默认「综合」带 28×3 指示条、产品卡两列布局且尺寸 167×246、规格文案 `1800 × 2000 mm`、`舒适睡感` 标签存在；输入关键词后列表刷新；截图与 `references/product-list.png` 逐区块比对；无版本标识条",
@@ -242,6 +242,16 @@
       "priority": "medium",
       "blocked_by": "MP-07, BE-05",
       "verify": "`npm run build:mp-weixin` 0 error；e2e 断言：品牌卡 bg #1a2260、主标语 31px 居中、强调条 72×3、空间图 315 高、`了解乐卡思` 按钮 220×42、客服卡 bg #111639、三列服务项各含名称+说明、TabBar「我的」选中、**页面无选款 FAB**；截图与 `mine.png` 逐区块比对；无版本标识条",
+      "requires_eval": true
+    },
+    {
+      "id": "BE-11",
+      "title": "seed 补寝具三款（9B/9D/9P）使首页型号入口可命中",
+      "description": "首页 9B 特制软床 / 9D 抗菌软床 / 9P 助眠枕头 三个入口在设计稿里是「产品型号入口」（references/home.png：大号型号数字+产品名），点击按型号搜索。但 V3 八产品里没有这三款，MP-02 验收时 keyword=9B 返回 0 条。用户 2026-11-14 决策方案 1：补 seed 数据。demo_seed.py 新增 3 款，归属「次卧 · 不次等」（八分类中语义最近者），型号 LEKASI-9B/9D/9P-180，spec 与 sleep_feel 与其余一致。产品总数 8->11，分类分布：次卧 · 不次等 4 款、其余各 1 款。测试断言同步（products 8->11、分页 8=3+3+2->11=3+3+3+2、下架后 10、spec 搜索 11、产品名集合、admin 列表）。",
+      "status": "done",
+      "priority": "high",
+      "blocked_by": "",
+      "verify": "keyword=9B/9D/9P 各命中 1 条；curl products?size=50 total=11 且分类分布正确；pytest 138 passed exit 0；seed 幂等逻辑不变",
       "requires_eval": true
     }
   ]

@@ -4,6 +4,54 @@
 
 ---
 
+## 2026-11-15 BE-11 补寝具三款 + MP-03B 产品页 验收通过（Hermes）
+
+### BE-11 seed 补 9B/9D/9P（用户决策方案 1）
+首页三个寝具入口按型号搜索，但 V3 八产品里没有这三款 → `keyword=9B` 返回 0 条。核实设计稿
+（`references/home.png`）确认它们是**产品型号入口**（大号型号数字+产品名），不是分类，
+故补 seed 而非改交互。
+
+- 新增 3 款归「次卧 · 不次等」（软床/枕头多用于次卧，八分类中语义最近），型号码 LEKASI-9B/9D/9P-180
+- 产品总数 8→11；分布：次卧 · 不次等 4 款、其余各 1 款
+- 测试断言同步 6 处（8→11、分页 3+3+2→3+3+3+2、下架后 10、spec 搜索 11、产品名集合、admin 列表）
+- 实测：keyword=9B/9D/9P 各命中 1 条；**pytest 138 passed exit 0**
+- commit `2775d66`
+
+### MP-03B 产品页 V3 重写（CC 挂死，Hermes 接手）
+CC 会话 `proc_124b8be7a0f5` **跑满 8 小时挂死**（CPU 20s 仅 +0.2s、15 分钟零写入），
+代码已写完未提交。kill 后接手补完。
+
+| 交付 | 内容 |
+|---|---|
+| `pages/product/list.vue` | 636 行重写：WechatNav 二级 + 搜索区 + 排序行 + 2 列网格 + 四态 + 触底加载 + TabBar two |
+| `components/product/ProductCard.vue` | V3 卡片 167×246 / radius12 / 主图150 / 内容区 top156 143×82 / 标签 72×22 & 58×20 |
+| `productListModel.ts` | 纯逻辑抽出 + 27 单测 |
+| `scripts/e2e/product-list.auto.js` | 重写为双段（静态 20 项 + 动态 automator） |
+
+**V3 三大移除项已清**：左侧分类侧栏、底部已选栏、列表视图产物（Q6 保留图标可点仍网格）
+
+### Hermes 独立复跑
+- `npx vitest run` → **280 passed / 23 files**（MP-03A 基线 253，+27）
+- `npm run build:mp-weixin` → DONE 0 err
+- 本轮 6 文件：**hex=0 / 裸间距=0 / 裸行高=0**
+- e2e 静态段 **20 PASS / 0 FAIL**；动态段 automator 端口阻塞（`please make sure http port is open`），如实记录
+- 规格逐条对照 spec.md §5.3 全部吻合
+
+### Hermes 主动整改
+补 token：`$space-28`（TabBar 左右 padding）、`$space-fab-bottom`（90px FAB 避让）、
+`$line-height-16-fixed` / `$line-height-15-line`（3 处裸行高）。CC 自己已补
+`$space-7/$space-9/$space-34`。全站本轮文件裸值清零。
+
+### 遗留
+1. automator 动态走查仍阻塞（开发者工具需扫码+开服务端口）
+2. 产品详情页未建 → 卡片点击 toast 兜底，MP-04 建页后自动生效
+3. **V2.0 遗留页面仍有硬编码 hex**（本轮范围外）：`article/list.vue`(9) / `article/detail.vue`(8)
+   / `user/index.vue`(3, MP-06 会重写) / `webview/index.vue`(1) / `SelectedBar.vue`(7, MP-05A 会重写)
+4. **CC 挂死频发**：MP-03A(63min)、MP-03B(8h) 连续两次「代码写完、收尾卡住」。
+   看门狗 CPU 判定正确但 cron 15 分钟粒度滞后。后续派活应强化「先 commit 再写文档」。
+
+---
+
 ## 2026-11-14 MP-03A 产品分类列表页 验收通过（Hermes 接手补完）
 
 CC 会话 `proc_55cc63efd90a` 在收尾阶段挂死（63 分钟，CPU 15s 仅 +0.11s、10 分钟零写入），代码已写完但未写 sprint-output、未 commit。**Hermes kill 后接手补完，未重派不重做。**
