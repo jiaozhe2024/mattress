@@ -20,6 +20,7 @@ import {
 } from "@/api/product";
 import ProductCard from "@/components/product/ProductCard.vue";
 import SelectedBar from "@/components/product/SelectedBar.vue";
+import SelectFab from "@/components/frame/SelectFab.vue";
 import { SCHEME_EDIT_PAGE } from "@/config";
 import { useProductList } from "@/composables/useProductList";
 import { useProductFilterStore } from "@/stores/useProductFilterStore";
@@ -105,11 +106,26 @@ onLoad(() => {
 });
 
 onShow(() => {
-  // 首页分类宫格 / jump_type=2 banner 经 Pinia 传入的分类（switchTab 不带参，核心约定 9）
+  // 首页寝具入口经 Pinia 传入的型号关键词（Q15：9B/9D/9P → 产品页搜索）
+  const requestedKeyword = filterStore.requestedKeyword;
+  if (requestedKeyword !== null) {
+    filterStore.clearRequest();
+    initialized = true;
+    inputText.value = requestedKeyword;
+    history.value = pushSearchHistory(requestedKeyword);
+    void applyKeyword(requestedKeyword);
+    return;
+  }
+  // 首页分类卡 / jump_type=2 banner 经 Pinia 传入的分类（switchTab 不带参，核心约定 9）
   const requested = filterStore.requestedCategoryId;
   if (requested !== null) {
     filterStore.clearRequest();
     initialized = true;
+    if (keyword.value !== "") {
+      // 分类与关键词互斥：切分类时清掉残留的型号搜索，避免双条件空结果
+      inputText.value = "";
+      void search("");
+    }
     void setCategory(requested);
     return;
   }
@@ -118,6 +134,14 @@ onShow(() => {
     void reload();
   }
 });
+
+/** 型号搜索：先清掉分类条件，保证 keyword 单独生效（与 store 的互斥语义一致）。 */
+async function applyKeyword(nextKeyword: string): Promise<void> {
+  if (categoryId.value !== null) {
+    await setCategory(null);
+  }
+  await search(nextKeyword);
+}
 
 onUnload(() => {
   debouncedSearch.cancel();
@@ -134,13 +158,11 @@ async function loadCategories(): Promise<void> {
   }
 }
 
-interface InputEvent {
-  detail: { value: string };
-}
-
-function onInput(event: InputEvent): void {
-  inputText.value = event.detail.value;
-  debouncedSearch(event.detail.value);
+/** 小程序 input 事件载荷（`detail.value`）；vue-tsc 按 DOM Event 校验，故用 CustomEvent 兼容取窄。 */
+function onInput(event: Event): void {
+  const value = (event as CustomEvent<{ value: string }>).detail?.value ?? "";
+  inputText.value = value;
+  debouncedSearch(value);
 }
 
 function onSearchConfirm(): void {
@@ -408,6 +430,7 @@ function onFooterTap(): void {
 
 <style scoped>
 .pl-page {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100vh;
