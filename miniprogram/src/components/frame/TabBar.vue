@@ -93,7 +93,7 @@ function onTap(item: TabBarItem, index: number): void {
   justify-content: space-between;
   width: 100%;
   height: 58px;
-  padding: 0 28px;
+  padding: 0 $space-28;
   box-sizing: border-box;
   background-color: $color-text-inv;
   border-top: 1px solid $color-line;

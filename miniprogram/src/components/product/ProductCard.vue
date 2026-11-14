@@ -1,32 +1,34 @@
 <script setup lang="ts">
+/**
+ * 产品卡（V3 产品页，MP-03B）
+ *
+ * 规格：references/product-list.png + design-spec/spec.md §5.3 ②
+ *   - 卡 167×246、白底、圆角 12、shadow/card（宽度由页面网格列宽决定，不写死）
+ *   - 主图 150 高 object-cover 贴顶
+ *   - 内容区左 12 上 156，143×82：产品名 Medium 13 / 规格 Inter Regular 10 /
+ *     标签行 h22（`舒适睡感` 72×22 + `查看详情` 58×20）
+ *
+ * 本卡只负责展示与「打开详情」；选品加入按钮属选品页 MP-05A 的小卡，不在本组件。
+ */
 import { computed } from "vue";
+import {
+  CARD_DETAIL_LABEL,
+  sleepFeelTagOf,
+} from "@/components/product/productListModel";
 import type { WxProductListItem } from "@/types/product";
 import { absoluteUrl } from "@/utils/url";
 
 const props = defineProps<{
   product: WxProductListItem;
-  mode: "grid" | "list";
-  added: boolean;
 }>();
 
 const emit = defineEmits<{
-  (event: "add", product: WxProductListItem): void;
   (event: "open", product: WxProductListItem): void;
 }>();
 
-/** 睡感字符串按常见分隔拆成标签（后端为自由文本，无分隔时单标签）。 */
-const sleepFeelTags = computed((): string[] => {
-  if (!props.product.sleep_feel) return [];
-  return props.product.sleep_feel
-    .split(/[、,，/|\s]+/)
-    .map((tag) => tag.trim())
-    .filter((tag) => tag !== "")
-    .slice(0, 3);
-});
+const sleepTag = computed((): string => sleepFeelTagOf(props.product));
 
-function onAdd(): void {
-  emit("add", props.product);
-}
+const initial = computed((): string => props.product.name.slice(0, 2));
 
 function onOpen(): void {
   emit("open", props.product);
@@ -34,16 +36,10 @@ function onOpen(): void {
 </script>
 
 <template>
-  <view
-    class="pcard"
-    :class="mode === 'list' ? 'pcard--list' : 'pcard--grid'"
-    @tap="onOpen"
-  >
+  <view class="pcard" @tap="onOpen">
     <view class="pcard-media">
       <view class="pcard-media-fallback">
-        <text class="pcard-media-fallback-text">{{
-          product.name.slice(0, 2)
-        }}</text>
+        <text class="pcard-media-initial">{{ initial }}</text>
       </view>
       <image
         v-if="product.main_image"
@@ -55,58 +51,35 @@ function onOpen(): void {
     </view>
     <view class="pcard-info">
       <text class="pcard-name">{{ product.name }}</text>
-      <text class="pcard-model">{{ product.model }}</text>
       <text v-if="product.spec" class="pcard-spec">{{ product.spec }}</text>
-      <view v-if="sleepFeelTags.length > 0" class="pcard-tags">
-        <text v-for="tag in sleepFeelTags" :key="tag" class="pcard-tag">{{
-          tag
-        }}</text>
-      </view>
-      <view class="pcard-foot">
-        <view
-          class="pcard-add"
-          :class="added ? 'pcard-add--added' : ''"
-          @tap.stop="onAdd"
-        >
-          <text class="pcard-add-icon">{{ added ? "✓" : "+" }}</text>
+      <view class="pcard-tag-row">
+        <view v-if="sleepTag !== ''" class="pcard-feel">
+          <text class="pcard-feel-text">{{ sleepTag }}</text>
+        </view>
+        <view class="pcard-detail" @tap.stop="onOpen">
+          <text class="pcard-detail-text">{{ CARD_DETAIL_LABEL }}</text>
         </view>
       </view>
     </view>
   </view>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .pcard {
-  background-color: #ffffff;
-  border-radius: 20rpx;
+  position: relative;
+  height: 246px;
   overflow: hidden;
-}
-
-.pcard--grid {
-  display: flex;
-  flex-direction: column;
-}
-
-.pcard--list {
-  display: flex;
-  flex-direction: row;
-  gap: 20rpx;
-  padding: 20rpx;
+  border-radius: $radius-12;
+  background-color: $color-text-inv;
+  box-shadow: $shadow-card;
 }
 
 .pcard-media {
   position: relative;
   width: 100%;
-  height: 300rpx;
-  background-color: #eef0f6;
+  height: 150px;
   overflow: hidden;
-}
-
-.pcard--list .pcard-media {
-  flex-shrink: 0;
-  width: 220rpx;
-  height: 220rpx;
-  border-radius: 12rpx;
+  background-color: $color-fill;
 }
 
 .pcard-media-fallback {
@@ -120,10 +93,11 @@ function onOpen(): void {
   height: 100%;
 }
 
-.pcard-media-fallback-text {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #8890b8;
+.pcard-media-initial {
+  font-family: $font-family-cn;
+  font-size: $font-19;
+  font-weight: $font-weight-medium;
+  color: $color-navy-50;
 }
 
 .pcard-image {
@@ -134,86 +108,90 @@ function onOpen(): void {
   height: 100%;
 }
 
+/* 内容区：left12 top156，143×82（按稿绝对定位，避免行高累积偏差） */
 .pcard-info {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 8rpx;
-  padding: 20rpx;
-}
-
-.pcard--list .pcard-info {
-  padding: 0;
+  position: absolute;
+  top: 156px;
+  left: $space-12;
+  width: 143px;
+  height: 82px;
 }
 
 .pcard-name {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #1e2330;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  font-family: $font-family-cn;
+  font-size: $font-13;
+  font-weight: $font-weight-medium;
+  line-height: $line-height-13;
+  color: $color-text-1;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.pcard-model {
-  font-size: 22rpx;
-  color: #8a90a3;
 }
 
 .pcard-spec {
-  font-size: 22rpx;
-  color: #8a90a3;
+  position: absolute;
+  top: 21px;
+  left: 0;
+  width: 100%;
+  font-family: $font-family-en;
+  font-size: $font-10;
+  font-weight: $font-weight-regular;
+  line-height: $line-height-10;
+  color: $color-text-3;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.pcard-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx;
-}
-
-.pcard-tag {
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  background-color: #fff8e1;
-  color: #1a2260;
-  font-size: 20rpx;
-}
-
-.pcard-foot {
+.pcard-tag-row {
+  position: absolute;
+  top: 38px;
+  left: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-top: auto;
-  min-height: 56rpx;
+  gap: $space-6;
+  height: 22px;
 }
 
-.pcard-add {
+.pcard-feel {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 50%;
-  background-color: #f7c400;
-  margin-left: auto;
+  width: 72px;
+  height: 22px;
+  border-radius: $radius-11;
+  background-color: $color-yellow-soft;
 }
 
-.pcard-add--added {
-  background-color: #e3e5ec;
+.pcard-feel-text {
+  font-family: $font-family-cn;
+  font-size: $font-11;
+  font-weight: $font-weight-medium;
+  line-height: $line-height-16-fixed;
+  color: $color-yellow-deep;
+  white-space: nowrap;
 }
 
-.pcard-add-icon {
-  font-size: 32rpx;
-  line-height: 1;
-  color: #1a2260;
+.pcard-detail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 20px;
+  border-radius: $radius-4;
+  background-color: $color-fill;
 }
 
-.pcard-add--added .pcard-add-icon {
-  color: #8a90a3;
+.pcard-detail-text {
+  font-family: $font-family-cn;
+  font-size: $font-10;
+  font-weight: $font-weight-regular;
+  line-height: $line-height-15-line;
+  color: $color-text-3;
+  white-space: nowrap;
 }
 </style>

@@ -365,7 +365,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
   flex-direction: column;
   gap: $space-20;
   /* 底部留白：内容不被原生 TabBar 与选款 FAB 遮挡 */
-  padding: $space-16 $space-16 90px;
+  padding: $space-16 $space-16 $space-fab-bottom;
 }
 
 /* ---------------- 状态（加载/错误/空） ---------------- */

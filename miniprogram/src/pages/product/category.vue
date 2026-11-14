@@ -187,7 +187,7 @@ function onEntryImageError(categoryId: number): void {
   flex-direction: column;
   gap: $space-12;
   /* 底部留白：内容不被原生 TabBar 与选款 FAB 遮挡 */
-  padding: $space-16 $space-16 90px;
+  padding: $space-16 $space-16 $space-fab-bottom;
 }
 
 /* ---------------- ① 系列横幅 ---------------- */

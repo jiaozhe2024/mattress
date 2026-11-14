@@ -97,6 +97,8 @@ $line-height-9: 1.45;
 $line-height-15-fixed: 22px;
 $line-height-14-fixed: 20px;
 $line-height-13-fixed: 19px;
+$line-height-16-fixed: 16px; // 睡感标签文字（spec §5.3 标签 h22 内 16px）
+$line-height-15-line: 15px;  // 「查看详情」标签文字（spec §5.3）
 
 /* ---------------- 间距 ----------------
  * design-tokens.md §间距与布局 只列了 16/20/28/12/8/9 等「布局级」值，
@@ -108,15 +110,20 @@ $space-3: 3px;   // 底部 Tab 项内纵向 gap、标签行内部
 $space-4: 4px;
 $space-5: 5px;   // 首页轮播指示 gap5、系列卡列间距、寝具卡 gap5
 $space-6: 6px;   // 横幅文案 gap6、系列卡间 gap6、服务卡 gap6
+$space-7: 7px;   // 产品页排序文字与指示条间距（spec §5.3）
 $space-8: 8px;
+$space-9: 9px;   // 产品页两列网格列间距（spec §5.3 每行 gap9）
 $space-10: 10px; // 快捷入口 gap10、详情标签 gap10
 $space-12: 12px;
 $space-16: 16px;
 $space-18: 18px; // 分类列表系列横幅 p18
 $space-20: 20px; // 首页正文板块间距、操作组 gap20
 $space-24: 24px;
+$space-28: 28px; // 底部 Tab 左右内边距（design-tokens.md 布局级）
 $space-32: 32px;
+$space-34: 34px; // 产品页排序项间距（spec §5.3 gap34）
 $space-60: 60px; // 空/错误态垂直留白
+$space-fab-bottom: 90px; // 页面底部为选款 FAB 预留（spec §5.1 FAB bottom90）
 
 /* ---------------- 全局结构尺寸 ---------------- */
 $status-bar-height: 32px; // 微信状态栏（设计基准；运行时用系统值）
@@ -227,6 +234,8 @@ $version-bar-height: 24px; // Q12 版本标识条：仅登记，不实现
   --line-height-15-fixed: 22px;
   --line-height-14-fixed: 20px;
   --line-height-13-fixed: 19px;
+  --line-height-16-fixed: 16px;
+  --line-height-15-line: 15px;
 
   /* 间距 */
   --space-2: 2px;
@@ -234,15 +243,20 @@ $version-bar-height: 24px; // Q12 版本标识条：仅登记，不实现
   --space-4: 4px;
   --space-5: 5px;
   --space-6: 6px;
+  --space-7: 7px;
   --space-8: 8px;
+  --space-9: 9px;
   --space-10: 10px;
   --space-12: 12px;
   --space-16: 16px;
   --space-18: 18px;
   --space-20: 20px;
   --space-24: 24px;
+  --space-28: 28px;
   --space-32: 32px;
+  --space-34: 34px;
   --space-60: 60px;
+  --space-fab-bottom: 90px;
 
   /* 全局结构尺寸 */
   --status-bar-height: 32px;
