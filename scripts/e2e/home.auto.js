@@ -1,15 +1,16 @@
 /**
- * MP-02 首页自动化验收脚本（miniprogram-automator）
+ * MP-02 首页自动化验收脚本（miniprogram-automator，V3 版）
  *
  * 断言内容：
- *   0. 后端 GET /api/v1/wxapi/home 可达（数据基准，不可达=环境阻塞）
- *   1. banner swiper 存在、slide 数与后端一致；首页截图对照设计稿
- *   2. 分类宫格入口数 = 7（.category-cell，不含「更多系列」占位 .category-more）
- *   3. jump_type=2 的 banner 点击跳产品列表且携带对应 category_id（Pinia 传参占位文案）
- *   4. 品牌服务横滚 scroll-view 存在、卡片数与后端 services 一致、点卡片跳资讯详情
- *   5. 资讯入口跳 pages/article/list
- *   6. 悬浮选款按钮点击跳转（MP-05 未落地前回退=产品列表 tab）
- *   7. autoplay 5s 轮播（swiper current 变化）
+ *   0. 后端 GET /api/v1/wxapi/home + /wxapi/categories 可达（数据基准，不可达=环境阻塞）
+ *   1. 品牌主视觉卡存在：品牌行 / 两行标题 / 副标题；swiper 可切换（指示点随 banners 动态）
+ *   2. 2×2 系列卡数=4，每卡有非空副文案（或 banner_image 图片通道）
+ *   3. 寝具入口数=3（9B/9D/9P）；点击 9B → 产品列表 tab 且搜索框 keyword=9B
+ *   4. 好眠服务：标题 + 服务卡数=3
+ *   5. 快捷入口数=2；点击「乐卡思资讯」→ /pages/article/list
+ *   6. 选款 FAB 为 64×42 胶囊（非 56rpx 圆形）
+ *   7. 旧 V2 结构不存在：7 分类宫格 / 服务横滚 / 「更多系列」占位；无版本标识条
+ *   8. 首页截图保存到 docs/exec-plans/screenshots/（与 references/home.png 逐区块比对）
  *
  * 运行前提：
  *   - 后端 docker compose up 且 seed 已灌（/api/v1/wxapi/home 200）
@@ -29,6 +30,7 @@ const MP_DIST = path.join(REPO_ROOT, "miniprogram", "dist", "dev", "mp-weixin");
 const SHOT_DIR = path.join(REPO_ROOT, "docs", "exec-plans", "screenshots");
 const CLI_PATH = "/Applications/wechatwebdevtools.app/Contents/MacOS/cli";
 const HOME_API = "http://localhost:8000/api/v1/wxapi/home";
+const CATEGORIES_API = "http://localhost:8000/api/v1/wxapi/categories";
 
 // automator 安装在 miniprogram/ 内，用 createRequire 从其 package.json 位置解析
 const localRequire = createRequire(
@@ -46,9 +48,9 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function fetchHome() {
+function fetchJson(url) {
   return new Promise((resolve, reject) => {
-    const req = http.get(HOME_API, (res) => {
+    const req = http.get(url, (res) => {
       let raw = "";
       res.on("data", (chunk) => {
         raw += chunk;
@@ -56,8 +58,8 @@ function fetchHome() {
       res.on("end", () => {
         try {
           const body = JSON.parse(raw);
-          if (!body || body.code !== 200 || !body.data) {
-            reject(new Error(`home 接口返回异常: ${raw.slice(0, 200)}`));
+          if (!body || body.code !== 200 || body.data === undefined) {
+            reject(new Error(`${url} 返回异常: ${raw.slice(0, 200)}`));
             return;
           }
           resolve(body.data);
@@ -67,7 +69,7 @@ function fetchHome() {
       });
     });
     req.on("error", reject);
-    req.setTimeout(5000, () => req.destroy(new Error("home 接口超时")));
+    req.setTimeout(5000, () => req.destroy(new Error(`${url} 超时`)));
   });
 }
 
@@ -81,154 +83,241 @@ async function waitFor(page, selector, timeoutMs = 15000) {
   return null;
 }
 
-async function runAssertions(miniProgram, homeData) {
+/** 读取元素尺寸（automator 返回 width/height 字符串，可能是 px 或 rpx）。 */
+async function sizeOf(element) {
+  const size = await element.size();
+  return {
+    width: Number.parseFloat(String(size.width)),
+    height: Number.parseFloat(String(size.height)),
+    raw: size,
+  };
+}
+
+/** 读取 swiper 当前页：优先 property，退化到 attribute。 */
+async function swiperCurrent(swiper) {
+  try {
+    const value = await swiper.property("current");
+    return Number(value);
+  } catch {
+    const value = await swiper.attribute("current");
+    return Number(value) || 0;
+  }
+}
+
+async function runAssertions(miniProgram, homeData, categoriesData) {
   const page = await miniProgram.currentPage();
   assert(
     page && page.path === "pages/index/index",
     `启动应落在首页，实际 ${page && page.path}`
   );
 
-  // [1] banner 存在 + slide 数与后端一致 + 截图
-  const banner = await waitFor(page, ".home-banner");
-  assert(banner, "首页应存在 banner swiper（.home-banner），加载超时或接口失败");
-  const slides = await page.$$(".home-banner-slide");
+  // [1] 品牌主视觉卡
+  const hero = await waitFor(page, ".home-hero");
+  assert(hero, "首页应存在品牌主视觉卡（.home-hero），加载超时或接口失败");
+  const brandText = (await page.$(".home-hero-brand")).text();
+  assert(
+    brandText.trim() === "LEKASI 乐卡思",
+    `品牌行应为「LEKASI 乐卡思」，实际「${brandText}」`
+  );
+  const titleLines = await page.$$(".home-hero-title");
+  const titleTexts = [];
+  for (const line of titleLines) titleTexts.push((await line.text()).trim());
+  assert(
+    titleTexts.join("") === "把舒适，带回每一个夜晚",
+    `主标题两行应为「把舒适，/带回每一个夜晚」，实际 ${JSON.stringify(titleTexts)}`
+  );
+  const subtitleText = (await page.$(".home-hero-subtitle")).text();
+  assert(
+    subtitleText.trim() === "探索适合自己与家人的好眠选择",
+    `副标题文案不符，实际「${subtitleText}」`
+  );
+
+  const swiper = await page.$(".home-hero-swiper");
+  assert(swiper, "banners 非空时应存在轮播 swiper（.home-hero-swiper）");
+  const slides = await page.$$(".home-hero-slide");
   assert(
     slides.length === homeData.banners.length,
     `banner slide 数应等于后端 banners(${homeData.banners.length})，实际 ${slides.length}`
   );
-  const shotPath = path.join(SHOT_DIR, "mp02-home.png");
-  await miniProgram.screenshot({ path: shotPath });
-  assert(fs.existsSync(shotPath), `截图未生成: ${shotPath}`);
-  console.log(`[1] banner 存在（${slides.length} 张）+ 截图 → ${shotPath}`);
-
-  // [2] 分类宫格入口数 = 7
-  const cells = await page.$$(".category-cell");
+  const dots = await page.$$(".home-hero-dot");
+  const expectedDots = homeData.banners.length > 1 ? homeData.banners.length : 0;
   assert(
-    cells.length === 7 && cells.length === homeData.categories.length,
-    `分类宫格入口应=7（与后端一致），实际 ${cells.length}（后端 ${homeData.categories.length}）`
+    dots.length === expectedDots,
+    `轮播指示点应=${expectedDots}（仅 1 张时隐藏），实际 ${dots.length}`
   );
-  console.log("[2] 分类宫格入口数=7 通过");
 
-  // [3] jump_type=2 的 banner → 产品列表 + 对应 category_id
-  //     须在轮播首次自动切换（≈5s）前执行，保证点到的 slide 与 current 一致
-  const currentIndex = Number(await banner.attribute("current")) || 0;
-  const tappedBanner = homeData.banners[currentIndex];
-  const slideToTap = (await page.$$(".home-banner-slide"))[currentIndex];
-  assert(slideToTap, `应可取到第 ${currentIndex} 张 banner slide`);
-  await slideToTap.tap();
-  await sleep(1000);
-  let current = await miniProgram.currentPage();
-  if (tappedBanner && tappedBanner.jump_type === 2) {
-    assert(
-      current.path === "pages/product/list",
-      `jump_type=2 banner 应跳产品列表，实际 ${current.path}`
-    );
-    // MP-03 起产品列表页为真实页：Pinia 传入的分类应命中左侧侧边导航的高亮项。
-    const targetId = Number(tappedBanner.jump_value);
-    const targetCategory = homeData.categories.find((c) => c.id === targetId);
-    assert(
-      targetCategory,
-      `banner jump_value=${tappedBanner.jump_value} 应在 home 分类列表中可解析`
-    );
-    const activeSide = await waitFor(current, ".pl-side-item--active", 8000);
-    assert(activeSide, "产品列表页应存在高亮的分类侧边项（.pl-side-item--active）");
-    const activeText = (await activeSide.text()).trim();
-    assert(
-      activeText.includes(targetCategory.name),
-      `侧边高亮应为「${targetCategory.name}」(category_id=${targetId})，实际「${activeText}」`
-    );
-    console.log(
-      `[3] jump_type=2 banner 跳分类列表通过（高亮分类=${targetCategory.name}, category_id=${targetId}）`
-    );
-  } else {
-    console.log(
-      `[3] 首屏 banner jump_type=${
-        tappedBanner ? tappedBanner.jump_type : "unknown"
-      }（非 2），分类跳转断言跳过，落地页=${current.path}`
-    );
+  // swiper 可切换：主动 swipeTo 到第 2 页（无自动播放依赖），校验 current 变化
+  if (homeData.banners.length > 1) {
+    const before = await swiperCurrent(swiper);
+    let switched = false;
+    try {
+      await swiper.swipeTo(1);
+      await sleep(600);
+      switched = (await swiperCurrent(swiper)) === 1;
+    } catch {
+      // swipeTo 不可用时退化为等待 autoplay（5s）
+      await sleep(6000);
+      switched = (await swiperCurrent(swiper)) !== before;
+    }
+    assert(switched, `轮播应可切换（swipeTo(1) 后 current 未变为 1）`);
   }
-  if (current.path !== "pages/index/index") {
-    await miniProgram.switchTab("/pages/index/index");
-    await sleep(800);
-  }
-
-  // [4] 品牌服务横滚 + 点卡片跳资讯详情
-  const serviceScroll = await page.$(".service-scroll");
-  assert(serviceScroll, "应存在品牌服务横滚 scroll-view（.service-scroll）");
-  const serviceCards = await page.$$(".service-card");
-  assert(
-    serviceCards.length === homeData.services.length && serviceCards.length >= 1,
-    `服务卡片数应等于后端 services(${homeData.services.length}) 且 ≥1，实际 ${serviceCards.length}`
-  );
-  await serviceCards[0].tap();
-  await sleep(1000);
-  current = await miniProgram.currentPage();
-  assert(
-    current.path === "pages/article/detail",
-    `点服务卡片应跳资讯详情，实际 ${current.path}`
-  );
-  await miniProgram.navigateBack();
-  await sleep(800);
   console.log(
-    `[4] 服务横滚存在（${serviceCards.length} 卡，scroll-x）+ 点卡跳详情通过`
+    `[1] 品牌主视觉卡通过（${slides.length} 张 banner，指示点 ${dots.length} 个，swiper 可切换）`
   );
 
-  // [5] 资讯入口跳 pages/article/list
-  const entryCard = await page.$(".entry-card");
-  assert(entryCard, "应存在资讯/客服入口卡片（.entry-card）");
-  await entryCard.tap();
+  // [2] 2×2 系列卡 = 4，副文案非空（或图片通道）
+  const seriesCards = await page.$$(".home-series-card");
+  assert(
+    seriesCards.length === 4,
+    `系列卡应=4（8 分类取 sort 前 4），实际 ${seriesCards.length}`
+  );
+  for (let i = 0; i < seriesCards.length; i += 1) {
+    const card = seriesCards[i];
+    const hasImage = (await card.$(".home-series-image")) !== null;
+    const subtitleEl = await card.$(".home-series-subtitle");
+    if (!hasImage) {
+      assert(
+        subtitleEl !== null,
+        `第 ${i + 1} 张系列卡既无 banner_image 也无副文案（.home-series-subtitle）`
+      );
+      const subtitle = (await subtitleEl.text()).trim();
+      assert(subtitle !== "", `第 ${i + 1} 张系列卡副文案为空`);
+    }
+  }
+  assert(
+    categoriesData.length >= 4,
+    `后端分类数应≥4，实际 ${categoriesData.length}`
+  );
+  console.log(`[2] 系列卡 4 张（副文案非空或图片通道）通过`);
+
+  // [3] 寝具入口 = 3；点 9B → 产品页 keyword=9B
+  const beddingCards = await page.$$(".home-bedding-card");
+  assert(beddingCards.length === 3, `寝具入口应=3，实际 ${beddingCards.length}`);
+  const models = await page.$$(".home-bedding-model");
+  const modelTexts = [];
+  for (const model of models) modelTexts.push((await model.text()).trim());
+  assert(
+    modelTexts.join(",") === "9B,9D,9P",
+    `寝具型号应为 9B/9D/9P，实际 ${JSON.stringify(modelTexts)}`
+  );
+  await beddingCards[0].tap();
+  await sleep(1200);
+  let current = await miniProgram.currentPage();
+  assert(
+    current.path === "pages/product/list",
+    `点寝具 9B 应 switchTab 产品列表，实际 ${current.path}`
+  );
+  const searchInput = await waitFor(current, ".pl-search-input", 8000);
+  assert(searchInput, "产品列表页应存在搜索框（.pl-search-input）");
+  let keywordValue = "";
+  try {
+    keywordValue = String(await searchInput.value());
+  } catch {
+    keywordValue = String(await searchInput.attribute("value"));
+  }
+  assert(
+    keywordValue.trim() === "9B",
+    `产品页搜索框应回填 keyword=9B，实际「${keywordValue}」`
+  );
+  console.log("[3] 寝具入口 3 个 + 点 9B 进入产品页 keyword=9B 通过");
+
+  await miniProgram.switchTab("/pages/index/index");
   await sleep(1000);
+  const homeAgain = await miniProgram.currentPage();
+  assert(
+    homeAgain && homeAgain.path === "pages/index/index",
+    `应回到首页，实际 ${homeAgain && homeAgain.path}`
+  );
+
+  // [4] 好眠服务：标题 + 3 张卡
+  const serviceTitle = await waitFor(homeAgain, ".home-services-title");
+  assert(serviceTitle, "应存在「乐卡思 · 好眠服务」标题");
+  assert(
+    (await serviceTitle.text()).trim() === "乐卡思 · 好眠服务",
+    `服务标题不符，实际「${await serviceTitle.text()}」`
+  );
+  const serviceCards = await homeAgain.$$(".home-service-card");
+  assert(serviceCards.length === 3, `服务卡应=3，实际 ${serviceCards.length}`);
+  console.log("[4] 好眠服务标题 + 3 张服务卡通过");
+
+  // [5] 快捷入口 = 2；资讯 → /pages/article/list
+  const entryCards = await homeAgain.$$(".home-entry-card");
+  assert(entryCards.length === 2, `快捷入口应=2，实际 ${entryCards.length}`);
+  const entryLabels = await homeAgain.$$(".home-entry-label");
+  const labelTexts = [];
+  for (const label of entryLabels) labelTexts.push((await label.text()).trim());
+  assert(
+    labelTexts.join(",") === "乐卡思资讯,联系客服",
+    `快捷入口文案不符，实际 ${JSON.stringify(labelTexts)}`
+  );
+  await entryCards[0].tap();
+  await sleep(1200);
   current = await miniProgram.currentPage();
   assert(
     current.path === "pages/article/list",
-    `点资讯入口应跳 pages/article/list，实际 ${current.path}`
+    `点「乐卡思资讯」应跳 /pages/article/list，实际 ${current.path}`
   );
   await miniProgram.navigateBack();
-  await sleep(800);
-  console.log("[5] 资讯入口跳转通过");
-
-  // [6] 悬浮选款按钮跳转（MP-05 未落地前回退=产品列表 tab）
-  const fab = await page.$(".select-fab");
-  assert(fab, "首页应存在悬浮选款按钮（.select-fab）");
-  await fab.tap();
   await sleep(1000);
   current = await miniProgram.currentPage();
   assert(
-    current.path === "pages/product/list",
-    `悬浮按钮点击应跳转（选品页未落地前回退产品列表），实际 ${current.path}`
+    current && current.path === "pages/index/index",
+    `资讯页返回后应回首页，实际 ${current && current.path}`
   );
-  await miniProgram.switchTab("/pages/index/index");
-  await sleep(800);
-  console.log("[6] 悬浮选款按钮跳转通过（回退=产品列表 tab）");
+  console.log("[5] 快捷入口 2 个 + 资讯跳转通过");
 
-  // [7] autoplay 5s 轮播：current 应变化（放最后，避免干扰前面按索引点 slide）
-  if (homeData.banners.length > 1) {
-    const swiper = await page.$(".home-banner");
-    const before = await swiper.attribute("current");
-    await sleep(6500);
-    const after = await swiper.attribute("current");
-    assert(before !== after, `banner 应 5s 自动轮播：current ${before} -> ${after}`);
-    console.log(`[7] banner 自动轮播通过（current ${before} -> ${after}）`);
-  } else {
-    console.log("[7] seed 仅 1 张 banner，轮播断言跳过");
+  // [6] 选款 FAB = 64×42 胶囊
+  const fab = await waitFor(current, ".select-fab");
+  assert(fab, "首页应存在选款 FAB（.select-fab）");
+  const fabSize = await sizeOf(fab);
+  const fabStyle = await fab.style("border-radius");
+  assert(
+    Math.abs(fabSize.width - 64) <= 1 && Math.abs(fabSize.height - 42) <= 1,
+    `FAB 尺寸应为 64×42，实际 ${JSON.stringify(fabSize.raw)}`
+  );
+  assert(
+    String(fabStyle) !== "50%" && String(fabStyle) !== "9999px",
+    `FAB 应为圆角 20 的胶囊而非圆形，实际 border-radius=${fabStyle}`
+  );
+  const fabLabel = await fab.$(".select-fab-label");
+  assert(fabLabel, "FAB 应含「选款」文字（.select-fab-label）");
+  assert((await fabLabel.text()).trim() === "选款", "FAB 文字应为「选款」");
+  console.log(`[6] 选款 FAB 胶囊 64×42 通过（${JSON.stringify(fabSize.raw)}）`);
+
+  // [7] 旧 V2 结构 / 版本条不存在
+  const legacy = [".category-grid", ".category-cell", ".category-more", ".service-scroll"];
+  for (const selector of legacy) {
+    const el = await current.$(selector);
+    assert(el === null, `首页不应再有旧 V2 结构 ${selector}`);
   }
+  const versionBar = await current.$(".version-bar");
+  assert(versionBar === null, "首页不应有版本标识条（.version-bar，Q12）");
+  console.log("[7] 无 7 分类宫格 / 无服务横滚 / 无「更多系列」/ 无版本条通过");
 
-  console.log("[done] MP-02 首页验收全部通过");
+  // [8] 截图
+  fs.mkdirSync(SHOT_DIR, { recursive: true });
+  const shotPath = path.join(SHOT_DIR, "mp02-home.png");
+  await miniProgram.screenshot({ path: shotPath });
+  assert(fs.existsSync(shotPath), `截图未生成: ${shotPath}`);
+  console.log(`[8] 首页截图 → ${shotPath}`);
+
+  console.log("[done] MP-02 首页 V3 验收全部通过");
 }
 
 async function main() {
   let homeData;
+  let categoriesData;
   try {
-    homeData = await fetchHome();
+    homeData = await fetchJson(HOME_API);
+    categoriesData = await fetchJson(CATEGORIES_API);
   } catch (err) {
-    console.error(`[环境阻塞] 后端 ${HOME_API} 不可达：${err.message}`);
+    console.error(`[环境阻塞] 后端接口不可达：${err.message}`);
     process.exitCode = 2;
     return;
   }
   console.log(
-    `[0] home 聚合可达：banners=${homeData.banners.length} categories=${homeData.categories.length} services=${homeData.services.length}`
+    `[0] 接口可达：banners=${homeData.banners.length} categories=${categoriesData.length}`
   );
-  fs.mkdirSync(SHOT_DIR, { recursive: true });
 
   let miniProgram;
   try {
@@ -242,7 +331,7 @@ async function main() {
     return;
   }
   try {
-    await runAssertions(miniProgram, homeData);
+    await runAssertions(miniProgram, homeData, categoriesData);
   } catch (err) {
     const msg = String((err && err.message) || err);
     const blocked =
