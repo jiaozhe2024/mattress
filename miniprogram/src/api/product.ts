@@ -5,7 +5,7 @@ import type { WxCategory } from "@/types/home";
 /** 后端 BE-05 支持的排序值（schemas/wx_content.py ProductSort）。 */
 export type BackendProductSort = "comprehensive" | "newest";
 
-/** 产品列表排序 Tab（jp/产品页.jpg：综合/推荐/新品）。 */
+/** 产品列表排序 Tab（V3 product-list.png 设计：综合/推荐/新品）。 */
 export type ProductSortTab = "comprehensive" | "recommended" | "newest";
 
 /**

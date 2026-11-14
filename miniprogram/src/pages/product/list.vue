@@ -1,8 +1,13 @@
 <script setup lang="ts">
 /**
- * 产品列表页（MP-03）。视觉依据 jp/产品分类列表.jpg + jp/产品页.jpg，
- * token 沿用 MP-02（LEKASI navy #1A2260 / yellow #F7C400 / cream #FDFBF5）。
- * 搜索栏（300ms 防抖 + 本地历史 10 条）/ 左侧分类侧边导航 / 排序 Tab（综合/推荐/新品）/
+ * 产品列表页（MP-03 骨架，**待 MP-03B 按 V3 重写**）。
+ *
+ * ⚠️ 本页视觉依据是已作废的 V2.0 旧稿（jp/ 已删除），且结构不符 V3：
+ * V3 产品页无左侧分类侧边导航、无底部已选栏（那些属选品页 MP-05A）。
+ * MP-03B 会重写本页。当前仅作功能骨架保留。
+ *
+ * token 沿用设计基线（LEKASI navy #1A2260 / yellow #F7C400 / cream #FDFBF5）。
+ * 搜索栏（300ms 防抖 + 本地历史 10 条）/ 分类侧边导航 / 排序 Tab（综合/推荐/新品）/
  * 宫格·列表视图切换 / 产品卡片选款 / 底部已选栏。数据接 GET /wxapi/products + /wxapi/categories。
  */
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
