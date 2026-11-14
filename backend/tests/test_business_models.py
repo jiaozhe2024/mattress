@@ -6,7 +6,8 @@
 - gin_product.model 唯一
 - gin_scheme_product.scheme_id 外键 ON DELETE CASCADE + ORM 级联删除
 - product_snapshot JSON 写入/读回
-- seed 演示数据：分类=7、产品>=6、banner=2（不同 jump_type）、文章=2、品牌=1，且幂等
+- seed 演示数据：分类=8、产品=8、banner=2（不同 jump_type）、文章=2、品牌=1，且幂等
+- BE-10：分类 subtitle 非空且全角空格分隔两段；banner_image 本轮全 null
 """
 
 from sqlalchemy import delete, func, select
@@ -156,8 +157,8 @@ async def test_seed_demo_data_counts_and_idempotency():
             result = await seed_demo_data(session)
 
         assert result.skipped is False
-        assert result.categories == 7
-        assert result.products >= 6
+        assert result.categories == 8
+        assert result.products == 8
 
         async with db_session() as session:
             categories = await session.scalar(
@@ -176,8 +177,8 @@ async def test_seed_demo_data_counts_and_idempotency():
                 select(func.count()).select_from(GinBrandInfo)
             )
 
-        assert categories == 7
-        assert products >= 6
+        assert categories == 8
+        assert products == 8
         assert len(banners) == 2
         jump_types = {b.jump_type for b in banners}
         assert len(jump_types) == 2, "banner 必须覆盖不同 jump_type"
@@ -194,6 +195,6 @@ async def test_seed_demo_data_counts_and_idempotency():
             categories_again = await session.scalar(
                 select(func.count()).select_from(GinProductCategory)
             )
-        assert categories_again == 7
+        assert categories_again == 8
     finally:
         await _clean_business_data()

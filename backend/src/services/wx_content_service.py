@@ -25,7 +25,9 @@ def _category_out(category: GinProductCategory) -> WxCategoryOut:
     return WxCategoryOut(
         id=category.id,
         name=category.name,
+        subtitle=category.subtitle,
         icon=category.icon,
+        banner_image=category.banner_image,
         sort=category.sort,
     )
 

@@ -2,7 +2,7 @@
 
 Router → Service → Repository 分层：本层承载业务规则——
 - banner 跳转目标校验（分类/产品存在性、外链 http 前缀）
-- 7 大预置分类只许禁用不许删（名单单一来源 utils.demo_seed.DEMO_CATEGORIES）
+- 8 大预置分类只许禁用不许删（名单单一来源 utils.demo_seed.DEMO_CATEGORIES）
 - 产品型号唯一（冲突 409）、分类必须存在（400）
 - 品牌信息单行 upsert
 - 软删除 = status 置 0（与业务模型一致，无物理删除）
@@ -41,7 +41,7 @@ from schemas.admin_content import (
 from services.storage import get_storage
 from utils.demo_seed import DEMO_CATEGORIES
 
-# 7 大预置分类名单（只许禁用不许删）——与 seed 数据同源，避免两处维护漂移
+# 8 大预置分类名单（只许禁用不许删）——与 seed 数据同源，避免两处维护漂移
 PRESET_CATEGORY_NAMES: frozenset[str] = frozenset(c["name"] for c in DEMO_CATEGORIES)
 
 
@@ -65,7 +65,9 @@ def _category_out(
     return CategoryOut(
         id=category.id,
         name=category.name,
+        subtitle=category.subtitle,
         icon=category.icon,
+        banner_image=category.banner_image,
         sort=category.sort,
         status=category.status,
         is_preset=category.name in PRESET_CATEGORY_NAMES,
@@ -238,7 +240,7 @@ async def delete_category(category_id: int) -> None:
         raise HTTPException(status_code=404, detail="分类不存在")
     if category.name in PRESET_CATEGORY_NAMES:
         raise HTTPException(
-            status_code=400, detail="7 大预置分类不可删除，仅可禁用（status=0）"
+            status_code=400, detail="8 大预置分类不可删除，仅可禁用（status=0）"
         )
     product_count = await admin_content_repository.count_products_in_category(category_id)
     if product_count > 0:

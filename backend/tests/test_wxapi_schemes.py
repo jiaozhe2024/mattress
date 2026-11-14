@@ -125,7 +125,7 @@ class TestCreateScheme:
     async def test_create_returns_id_with_complete_snapshot(
         self, async_client: AsyncClient, user_a_headers: dict
     ):
-        product = await _get_product_by_model("JM-SJ-001")
+        product = await _get_product_by_model("LEKASI-505-180")
         data = await _create_scheme(
             async_client, user_a_headers, product_ids=[product.id]
         )
@@ -140,7 +140,7 @@ class TestCreateScheme:
         # 快照值 = 创建时刻的产品状态
         assert snapshot["id"] == product.id
         assert snapshot["name"] == product.name
-        assert snapshot["model"] == "JM-SJ-001"
+        assert snapshot["model"] == "LEKASI-505-180"
         assert snapshot["main_image"] == product.main_image
         assert snapshot["spec"] == product.spec
         assert snapshot["sleep_feel"] == product.sleep_feel
@@ -212,7 +212,7 @@ class TestSnapshotImmutability:
     async def test_product_update_does_not_change_scheme_snapshot(
         self, async_client: AsyncClient, user_a_headers: dict
     ):
-        product = await _get_product_by_model("9M-ZX-180")
+        product = await _get_product_by_model("LEKASI-3D-180")
         old_name, old_spec = product.name, product.spec
         data = await _create_scheme(
             async_client, user_a_headers, product_ids=[product.id]
@@ -245,14 +245,14 @@ class TestSnapshotImmutability:
     async def test_put_regenerates_snapshot_from_current_product(
         self, async_client: AsyncClient, user_a_headers: dict
     ):
-        product = await _get_product_by_model("JM-SJ-001")
+        product = await _get_product_by_model("LEKASI-505-180")
         data = await _create_scheme(
             async_client, user_a_headers, product_ids=[product.id]
         )
         # 产品改名后 PUT 重新生成快照 → 应取当前（新）状态
         async with db_session() as session:
             db_product = await session.get(GinProduct, product.id)
-            db_product.name = "卷绵时代·舒卷床垫 V2"
+            db_product.name = "505压缩卷包床垫 V2"
 
         resp = await async_client.put(
             f"{SCHEMES_URL}/{data['id']}",
@@ -261,7 +261,7 @@ class TestSnapshotImmutability:
         )
         assert resp.status_code == 200, resp.text
         snapshot = resp.json()["data"]["products"][0]["snapshot"]
-        assert snapshot["name"] == "卷绵时代·舒卷床垫 V2"
+        assert snapshot["name"] == "505压缩卷包床垫 V2"
 
 
 class TestUpdateScheme:

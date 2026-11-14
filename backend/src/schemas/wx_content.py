@@ -28,9 +28,13 @@ class ArticleCategoryFilter(StrEnum):
 
 
 class WxCategoryOut(BaseModel):
+    """分类入口（Q15 双通道：banner_image 非空优先显示图片，否则 name + subtitle）。"""
+
     id: int
     name: str
+    subtitle: str | None = Field(default=None, description="副文案文字")
     icon: str | None = None
+    banner_image: str | None = Field(default=None, description="整块入口图片URL")
     sort: int = 0
 
 

@@ -75,14 +75,18 @@ class StatusToggle(BaseModel):
 # ---------------- 产品分类 ----------------
 class CategoryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=50)
+    subtitle: str | None = Field(default=None, max_length=100, description="分类副文案文字")
     icon: str | None = Field(default=None, max_length=255)
+    banner_image: str | None = Field(default=None, max_length=255, description="分类入口整块图片URL")
     sort: int = Field(default=0, ge=0)
     status: int = Field(default=1, ge=0, le=1)
 
 
 class CategoryUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=50)
+    subtitle: str | None = Field(default=None, max_length=100)
     icon: str | None = Field(default=None, max_length=255)
+    banner_image: str | None = Field(default=None, max_length=255)
     sort: int | None = Field(default=None, ge=0)
     status: int | None = Field(default=None, ge=0, le=1)
 
@@ -90,10 +94,12 @@ class CategoryUpdate(BaseModel):
 class CategoryOut(BaseModel):
     id: int
     name: str
+    subtitle: str | None = None
     icon: str | None = None
+    banner_image: str | None = None
     sort: int = 0
     status: int = 1
-    is_preset: bool = Field(default=False, description="7 大预置分类（只许禁用不许删）")
+    is_preset: bool = Field(default=False, description="8 大预置分类（只许禁用不许删）")
     product_count: int = Field(default=0, description="分类下产品数")
     create_time: datetime | None = None
     update_time: datetime | None = None

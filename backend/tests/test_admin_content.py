@@ -4,7 +4,8 @@
 - 逐模块 新建→编辑→下架/禁用→软删除 走通，且后端操作日志（AuditLog）有记录
 - 产品能同时保存 主图 + 2 张详情轮播图 + 富文本
 - banner jump_type=2 时校验 jump_value 为存在的分类（跳转值下拉数据源）
-- 7 大预置分类不可删除只可禁用；软删除 = status 0（无物理删除）
+- 8 大预置分类不可删除只可禁用；软删除 = status 0（无物理删除）
+- BE-10：分类 subtitle/banner_image 可创建/更新/回显
 - 图片上传走 OSS 适配层（local mock），返回 URL
 - RBAC：无角色普通用户 403
 
@@ -47,7 +48,7 @@ async def _clean_business_tables() -> None:
 
 @pytest.fixture(autouse=True)
 async def _seeded_business_data():
-    """每个用例前清表 + 写入 seed（7 分类/7 产品/2 banner/2 文章/1 品牌）。"""
+    """每个用例前清表 + 写入 seed（8 分类/8 产品/2 banner/2 文章/1 品牌）。"""
     await _clean_business_tables()
     async with db_session() as session:
         result = await seed_demo_data(session)
@@ -110,13 +111,57 @@ class TestUpload:
 
 # ---------------- 产品分类 ----------------
 class TestCategories:
-    async def test_list_categories_seven_preset(self, async_client: AsyncClient, auth_headers: dict):
+    async def test_list_categories_eight_preset(self, async_client: AsyncClient, auth_headers: dict):
         resp = await async_client.get(f"{ADMIN}/categories", headers=auth_headers)
         assert resp.status_code == 200, resp.text
         data = resp.json()["data"]
-        assert len(data) == 7
+        assert len(data) == 8
         assert all(item["is_preset"] for item in data)
-        assert {"id", "name", "icon", "sort", "status", "product_count"} <= data[0].keys()
+        assert {
+            "id", "name", "subtitle", "icon", "banner_image", "sort", "status", "product_count"
+        } <= data[0].keys()
+        assert all(item["subtitle"] for item in data)
+        assert all(item["banner_image"] is None for item in data)
+
+    async def test_create_update_subtitle_and_banner_image(
+        self, async_client: AsyncClient, auth_headers: dict
+    ):
+        """BE-10 verify：Admin 可填 subtitle、可写 banner_image 并在列表/详情回显。"""
+        resp = await async_client.post(
+            f"{ADMIN}/categories",
+            headers=auth_headers,
+            json={
+                "name": "测试双通道分类",
+                "subtitle": "测试副文案　第二段",
+                "banner_image": "/uploads/images/banner-cat.png",
+                "sort": 88,
+                "status": 1,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        category = resp.json()["data"]
+        assert category["subtitle"] == "测试副文案　第二段"
+        assert category["banner_image"] == "/uploads/images/banner-cat.png"
+        # 更新两字段
+        resp = await async_client.put(
+            f"{ADMIN}/categories/{category['id']}",
+            headers=auth_headers,
+            json={"subtitle": "改后的副文案", "banner_image": None},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["data"]["subtitle"] == "改后的副文案"
+        assert resp.json()["data"]["banner_image"] is None
+        # 列表回显
+        resp = await async_client.get(f"{ADMIN}/categories", headers=auth_headers)
+        listed = next(i for i in resp.json()["data"] if i["id"] == category["id"])
+        assert listed["subtitle"] == "改后的副文案"
+        # subtitle 超长 422
+        resp = await async_client.post(
+            f"{ADMIN}/categories",
+            headers=auth_headers,
+            json={"name": "超长副文案分类", "subtitle": "字" * 101},
+        )
+        assert resp.status_code == 422
 
     async def test_create_update_and_soft_delete_custom_category(
         self, async_client: AsyncClient, auth_headers: dict
@@ -151,7 +196,7 @@ class TestCategories:
     async def test_preset_category_delete_forbidden_only_disable(
         self, async_client: AsyncClient, auth_headers: dict
     ):
-        preset_id = await _get_category_id_by_name("卷绵时代")
+        preset_id = await _get_category_id_by_name("“卷”起来")
         # 删除预置分类 → 400
         resp = await async_client.delete(
             f"{ADMIN}/categories/{preset_id}", headers=auth_headers
@@ -169,12 +214,12 @@ class TestCategories:
         # 禁用后 wxapi 分类列表不再出现
         resp = await async_client.get("/api/v1/wxapi/categories")
         names = [c["name"] for c in resp.json()["data"]]
-        assert "卷绵时代" not in names
+        assert "“卷”起来" not in names
 
     async def test_preset_category_rename_forbidden(
         self, async_client: AsyncClient, auth_headers: dict
     ):
-        preset_id = await _get_category_id_by_name("9M特制床垫")
+        preset_id = await _get_category_id_by_name("6S专属床垫")
         resp = await async_client.put(
             f"{ADMIN}/categories/{preset_id}",
             headers=auth_headers,
@@ -186,7 +231,7 @@ class TestCategories:
         self, async_client: AsyncClient, auth_headers: dict
     ):
         resp = await async_client.post(
-            f"{ADMIN}/categories", headers=auth_headers, json={"name": "花筑手作"}
+            f"{ADMIN}/categories", headers=auth_headers, json={"name": "手工 · 零胶虑"}
         )
         assert resp.status_code == 409
 
@@ -194,18 +239,18 @@ class TestCategories:
 # ---------------- 产品 ----------------
 class TestProducts:
     async def test_list_products_filters(self, async_client: AsyncClient, auth_headers: dict):
-        # 全量：seed 7 个产品
+        # 全量：seed 8 个产品
         resp = await async_client.get(f"{ADMIN}/products", headers=auth_headers)
         assert resp.status_code == 200, resp.text
         data = resp.json()["data"]
-        assert data["total"] == 7 and len(data["items"]) == 7
+        assert data["total"] == 8 and len(data["items"]) == 8
         # 名称筛选
         resp = await async_client.get(
-            f"{ADMIN}/products", headers=auth_headers, params={"name": "卷绵"}
+            f"{ADMIN}/products", headers=auth_headers, params={"name": "505压缩"}
         )
         assert resp.json()["data"]["total"] == 1
         # 分类筛选
-        category_id = await _get_category_id_by_name("助眠枕头")
+        category_id = await _get_category_id_by_name("薄垫 · 不薄待")
         resp = await async_client.get(
             f"{ADMIN}/products", headers=auth_headers, params={"category_id": category_id}
         )
@@ -215,7 +260,7 @@ class TestProducts:
         )
         # 型号筛选 + 状态筛选
         resp = await async_client.get(
-            f"{ADMIN}/products", headers=auth_headers, params={"model": "9M-ZX", "status": 1}
+            f"{ADMIN}/products", headers=auth_headers, params={"model": "LEKASI-3D", "status": 1}
         )
         assert resp.json()["data"]["total"] == 1
         resp = await async_client.get(
@@ -227,7 +272,7 @@ class TestProducts:
         self, async_client: AsyncClient, auth_headers: dict
     ):
         """verify：主图 + 2 张详情轮播图 + 富文本 同时保存。"""
-        category_id = await _get_category_id_by_name("9M特制床垫")
+        category_id = await _get_category_id_by_name("6S专属床垫")
         payload = {
             "category_id": category_id,
             "name": "测试产品·云端",
@@ -255,19 +300,19 @@ class TestProducts:
         assert detail["detail_images"] == payload["detail_images"]
         assert len(detail["detail_images"]) == 2
         assert detail["detail_content"] == payload["detail_content"]
-        assert detail["category_name"] == "9M特制床垫"
+        assert detail["category_name"] == "6S专属床垫"
 
     async def test_create_product_duplicate_model_409(
         self, async_client: AsyncClient, auth_headers: dict
     ):
-        category_id = await _get_category_id_by_name("9M特制床垫")
+        category_id = await _get_category_id_by_name("双面控")
         resp = await async_client.post(
             f"{ADMIN}/products",
             headers=auth_headers,
             json={
                 "category_id": category_id,
                 "name": "型号冲突产品",
-                "model": "9M-ZX-180",  # seed 已存在
+                "model": "LEKASI-3D-180",  # seed 已存在
                 "main_image": "/uploads/images/x.png",
             },
         )
@@ -291,7 +336,7 @@ class TestProducts:
     async def test_detail_images_over_limit_422(
         self, async_client: AsyncClient, auth_headers: dict
     ):
-        category_id = await _get_category_id_by_name("9M特制床垫")
+        category_id = await _get_category_id_by_name("零压 · 深睡")
         resp = await async_client.post(
             f"{ADMIN}/products",
             headers=auth_headers,
@@ -310,19 +355,19 @@ class TestProducts:
     ):
         async with db_session() as session:
             product = await session.scalar(
-                select(GinProduct).where(GinProduct.model == "JM-SJ-001")
+                select(GinProduct).where(GinProduct.model == "LEKASI-505-180")
             )
             product_id = product.id
         # 编辑（改名 + 下架）
         resp = await async_client.put(
             f"{ADMIN}/products/{product_id}",
             headers=auth_headers,
-            json={"name": "卷绵时代·舒卷床垫（改）", "status": 0},
+            json={"name": "505压缩卷包床垫（改）", "status": 0},
         )
         assert resp.status_code == 200
         assert resp.json()["data"]["status"] == 0
         # 小程序端列表不再出现、详情 404
-        resp = await async_client.get("/api/v1/wxapi/products", params={"keyword": "卷绵"})
+        resp = await async_client.get("/api/v1/wxapi/products", params={"keyword": "505压缩"})
         assert resp.json()["data"]["total"] == 0
         resp = await async_client.get(f"/api/v1/wxapi/products/{product_id}")
         assert resp.status_code == 404
@@ -332,7 +377,7 @@ class TestProducts:
             ids = list(
                 (
                     await session.scalars(
-                        select(GinProduct.id).where(GinProduct.model.in_(["9M-ZX-180", "HZ-YJ-001"]))
+                        select(GinProduct.id).where(GinProduct.model.in_(["LEKASI-3D-180", "LEKASI-XF3-180"]))
                     )
                 ).all()
             )
@@ -366,7 +411,7 @@ class TestBanners:
     async def test_create_banner_jump_category_and_validate(
         self, async_client: AsyncClient, auth_headers: dict
     ):
-        category_id = await _get_category_id_by_name("卷绵时代")
+        category_id = await _get_category_id_by_name("“卷”起来")
         # jump_type=2 + 合法分类 → 成功
         resp = await async_client.post(
             f"{ADMIN}/banners",

@@ -30,7 +30,9 @@ export type BannerUpdate = Partial<BannerCreate>
 export interface Category {
   id: number
   name: string
+  subtitle: string | null
   icon: string | null
+  banner_image: string | null
   sort: number
   status: number
   is_preset: boolean
@@ -41,7 +43,9 @@ export interface Category {
 
 export interface CategoryCreate {
   name: string
+  subtitle?: string | null
   icon?: string | null
+  banner_image?: string | null
   sort: number
   status: number
 }

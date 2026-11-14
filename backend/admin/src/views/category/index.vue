@@ -9,7 +9,7 @@
       </template>
 
       <el-alert
-        title="7 大预置分类只允许禁用，不允许删除；已有产品的分类同样不可删除（后端 400 拒绝）。"
+        title="8 大预置分类只允许禁用，不允许删除；已有产品的分类同样不可删除（后端 400 拒绝）。"
         type="info"
         :closable="false"
         class="preset-alert"
@@ -17,6 +17,19 @@
 
       <el-table v-loading="loading" :data="categories" border stripe>
         <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column label="入口图" width="110">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.banner_image"
+              :src="row.banner_image"
+              :preview-src-list="[row.banner_image]"
+              preview-teleported
+              fit="cover"
+              class="category-banner"
+            />
+            <span v-else class="form-tip">未上传</span>
+          </template>
+        </el-table-column>
         <el-table-column label="图标" width="90">
           <template #default="{ row }">
             <el-image
@@ -36,6 +49,12 @@
             <el-tag v-if="row.is_preset" size="small" type="warning" class="preset-tag">
               预置
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="副文案" min-width="150">
+          <template #default="{ row }">
+            <span v-if="row.subtitle">{{ row.subtitle }}</span>
+            <span v-else class="form-tip">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="product_count" label="产品数" width="90" />
@@ -80,12 +99,25 @@
       destroy-on-close
       @closed="onDialogClosed"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="名称" prop="name">
           <el-input v-model="form.name" maxlength="50" show-word-limit placeholder="分类名称" />
         </el-form-item>
+        <el-form-item label="副文案" prop="subtitle">
+          <el-input
+            v-model="form.subtitle"
+            maxlength="100"
+            show-word-limit
+            placeholder="如：六大专属　分龄深睡"
+          />
+          <span class="form-tip">两段文案建议用全角空格分隔</span>
+        </el-form-item>
         <el-form-item label="图标" prop="icon">
           <ImageUpload v-model="form.icon" />
+        </el-form-item>
+        <el-form-item label="入口图" prop="banner_image">
+          <ImageUpload v-model="form.bannerImage" />
+          <span class="form-tip">整块入口图片；上传后小程序优先显示图片</span>
         </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" :max="9999" />
@@ -127,13 +159,15 @@ import { formatDateTime } from '@/utils/format'
 
 interface CategoryFormState {
   name: string
+  subtitle: string | null
   icon: string | null
+  bannerImage: string | null
   sort: number
   status: number
 }
 
 function emptyForm(): CategoryFormState {
-  return { name: '', icon: null, sort: 0, status: 1 }
+  return { name: '', subtitle: null, icon: null, bannerImage: null, sort: 0, status: 1 }
 }
 
 const loading = ref(false)
@@ -150,6 +184,7 @@ const rules: FormRules = {
     { required: true, message: '请输入分类名称', trigger: 'blur' },
     { max: 50, message: '名称最长 50 字符', trigger: 'blur' },
   ],
+  subtitle: [{ max: 100, message: '副文案最长 100 字符', trigger: 'blur' }],
 }
 
 async function fetchCategories(): Promise<void> {
@@ -170,7 +205,9 @@ function openCreate(): void {
 function openEdit(row: Category): void {
   editingId.value = row.id
   form.name = row.name
+  form.subtitle = row.subtitle
   form.icon = row.icon
+  form.bannerImage = row.banner_image
   form.sort = row.sort
   form.status = row.status
   dialogVisible.value = true
@@ -189,7 +226,9 @@ async function onSubmit(): Promise<void> {
 
   const payload: CategoryCreate = {
     name: form.name.trim(),
+    subtitle: form.subtitle?.trim() || null,
     icon: form.icon,
+    banner_image: form.bannerImage,
     sort: form.sort,
     status: form.status,
   }
@@ -256,6 +295,12 @@ onMounted(fetchCategories)
 .category-icon {
   width: 44px;
   height: 44px;
+}
+
+.category-banner {
+  width: 90px;
+  height: 44px;
+  border-radius: 4px;
 }
 
 .preset-tag {

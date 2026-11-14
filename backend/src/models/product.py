@@ -4,19 +4,25 @@ gin_product_category / gin_product —— 依据 aaa.md §5.2.1 / §5.2.2、PRD 
 V2.0 约定：商品无独立 SKU 表，规格（spec/sleep_feel 等）内嵌字段。
 """
 
-from sqlalchemy import JSON, BigInteger, Column
+from sqlalchemy import JSON, BigInteger, Column, ForeignKey, Index
 from sqlmodel import Field, Relationship
 
 from .base import BusinessBaseModel, LongText, TimestampMixin
 
 
 class GinProductCategory(BusinessBaseModel, TimestampMixin, table=True):
-    """产品分类表（7 大预置分类，只许禁用不许删，见 BE-08）。"""
+    """产品分类表（8 大预置分类，只许禁用不许删，见 BE-10）。"""
 
     __tablename__ = "gin_product_category"
 
     name: str = Field(max_length=50, description="分类名称")
+    subtitle: str | None = Field(
+        default=None, max_length=100, description="分类副文案文字（入口说明行）"
+    )
     icon: str | None = Field(default=None, max_length=255, description="分类图标URL")
+    banner_image: str | None = Field(
+        default=None, max_length=255, description="分类入口整块图片URL"
+    )
     parent_id: int | None = Field(
         default=None, sa_type=BigInteger, description="父分类ID（预留，暂不使用）"
     )
@@ -32,11 +38,20 @@ class GinProduct(BusinessBaseModel, TimestampMixin, table=True):
     """产品表（无独立 SKU 表，规格内嵌；detail_images/real_images 为 JSON 数组）。"""
 
     __tablename__ = "gin_product"
+    # BE-06 技术债修复：SQLModel 默认索引名 ix_<table>_<column> 会让
+    # gin_product.category_id 与 gin_product_category.id 同名（均
+    # ix_gin_product_category_id）。MySQL 索引名表级隔离不受影响，但 SQLite
+    # 索引名库级全局唯一会导致干净库建表失败，故显式改名。
+    __table_args__ = (
+        Index("ix_gin_product_category_fk", "category_id"),
+    )
 
     category_id: int = Field(
-        sa_type=BigInteger,
-        foreign_key="gin_product_category.id",
-        index=True,
+        sa_column=Column(
+            BigInteger,
+            ForeignKey("gin_product_category.id"),
+            nullable=False,
+        ),
         description="所属分类ID",
     )
     name: str = Field(max_length=100, description="产品名称")

@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-11-14 BE-10 分类副文案字段 + V3 演示数据重写（LEKASI 八分类）（submitted，待验收）
+- `gin_product_category` 增 `subtitle VARCHAR(100) NULL` + `banner_image VARCHAR(255) NULL`（alembic `be10cat2f7a1`，down_revision `a3f7c9d21e05`）；Q15 双通道：有图优先 banner_image，无图降级 name+subtitle
+- 贯通：admin_content（Create/Update/Out）+ wx_content（WxCategoryOut）+ 两个 service 的 `_category_out`；`PRESET_CATEGORY_NAMES` 派生自 DEMO_CATEGORIES 自动变 8 条（仅注释/错误文案 7 大→8 大）
+- Admin `views/category/index.vue`：表格加「入口图」缩略图列 + 「副文案」列；弹窗加 subtitle 输入（max 100）+ banner_image ImageUpload（复用 BE-08 上传）；`npm run build` RC 0
+- demo_seed 重写：V3 八分类（sort 1..8，subtitle 全角空格两段；5/6/7 定稿为单段；banner_image 全 null）+ 八产品一分类一款（3D床垫/幸福3号/幸福2号/幸福1号/幸福99床垫/505压缩卷包床垫/323特制版床垫/9M 卷绵特制床垫，型号 LEKASI-*-180，spec 1800 × 2000 mm，sleep_feel 舒适睡感）；幂等逻辑（分类非空即跳过）不变
+- **顺手修 BE-06 技术债**：`gin_product.category_id` 改 `Column(BigInteger, ForeignKey)` + `__table_args__=(Index("ix_gin_product_category_fk","category_id"),)`——SQLite 干净库索引名撞名（verify 要求 `rm test.db` 单跑分类测试通过；MySQL 表级隔离无感，无新迁移）
+- 验收：alembic head=be10cat2f7a1；MySQL SHOW COLUMNS 两列齐 + 分类/产品各 8；curl /wxapi/categories 8 条 subtitle 非空 banner_image=null sort 1..8、/wxapi/products?size=50 total=8 全落八分类、/wxapi/home categories=8 含两字段；admin 上传 banner_image→PUT→wxapi 同步→复原 null 闭环实测；pytest 全量 **139 tests / 0 fail / 1 skip（基座既有）**；干净库单跑 4 文件 26/28/6/34 全绿
+- 发现：BE-08 遗留断言 `400-800-1234` 与 seed 纯数字不符（已改 `4008001234`）；test_wxapi_schemes 旧型号 JM-SJ-001/9M-ZX-180 已换 LEKASI-505-180/LEKASI-3D-180
+- 数据重建：备份 `/tmp/be10_backup_before_reseed.sql` → 7 张 gin_ 演示表 TRUNCATE（不动 wx_user/基座表）→ seed 脚本 → `docker compose up -d --build web`
+- 详情 docs/exec-plans/active/BE-10-sprint-output.md；tasks.json BE-10 **未动、未 commit**（Hermes 所有权）
+
 ## 2026-11-06 MP-03 产品列表页功能骨架（续接中断 session）（submitted，待验收）
 - 用户决策本轮：功能骨架优先（逻辑/数据/交互完整，**不做** jp 图像素级视觉还原，视觉精修后续另派）
 - **续接**上一中断会话的未提交文件（先读后接，未推倒重写）：list.vue / api/product.ts / composables/useProductList.ts / components/product/{ProductCard,SelectedBar}.vue / utils/{debounce,searchHistory}.ts / config.ts(+SCHEME_EDIT_PAGE) / types/product.ts(+WxProductListItem/WxProductPage)

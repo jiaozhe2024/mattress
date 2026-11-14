@@ -1,8 +1,14 @@
 """BE-02 演示 seed 数据（开发/验收环境用）。
 
+BE-10 重写为 LEKASI V3 八分类 + 八产品（用户 2026-11-14 定稿，见
+docs/design/open-questions.md Q15 与 design-spec/spec.md §5.2/§5.3）。
+
 幂等约定：gin_product_category 已有任意行即视为已 seed，直接跳过。
 图片 URL 为本地 mock 占位（/uploads/demo/...），OSS 适配层落地后由
 Admin 上传流程替换（BE-08）。
+
+分类入口双通道（Q15）：接口同时返回 subtitle（文字）与 banner_image（整块图片）。
+本轮 seed 的 banner_image 全部为 null，走文字渲染路径；设计侧出图后由 Admin 上传。
 """
 
 from dataclasses import dataclass
@@ -14,15 +20,65 @@ from models.content import GinArticle, GinBanner, GinBrandInfo
 from models.enums import ArticleCategory, BannerJumpType
 from models.product import GinProduct, GinProductCategory
 
-# ---------------- 7 大预置分类（tasks.json BE-02，只许禁用不许删） ----------------
+# ---------------- 8 大预置分类（tasks.json BE-10，只许禁用不许删） ----------------
+# 顺序即 sort 1..8；subtitle 两段之间用全角空格（U+3000）分隔（spec.md §5.2）。
 DEMO_CATEGORIES: list[dict] = [
-    {"name": "9M特制床垫", "icon": "/uploads/demo/category-9m.png", "sort": 1},
-    {"name": "花筑手作", "icon": "/uploads/demo/category-huazhu.png", "sort": 2},
-    {"name": "卷绵时代", "icon": "/uploads/demo/category-juanmian.png", "sort": 3},
-    {"name": "小斑马", "icon": "/uploads/demo/category-xiaobanma.png", "sort": 4},
-    {"name": "特制软床", "icon": "/uploads/demo/category-tezhi-ruanchuang.png", "sort": 5},
-    {"name": "抗菌软床", "icon": "/uploads/demo/category-kangjun-ruanchuang.png", "sort": 6},
-    {"name": "助眠枕头", "icon": "/uploads/demo/category-zhumian-zhentou.png", "sort": 7},
+    {
+        "name": "6S专属床垫",
+        "subtitle": "六大专属　分龄深睡",
+        "icon": "/uploads/demo/category-6s.png",
+        "banner_image": None,
+        "sort": 1,
+    },
+    {
+        "name": "手工 · 零胶虑",
+        "subtitle": "大师手作　奢睡体验",
+        "icon": "/uploads/demo/category-shougong.png",
+        "banner_image": None,
+        "sort": 2,
+    },
+    {
+        "name": "姜大师 · 草本",
+        "subtitle": "暖姜纤维　古法温养",
+        "icon": "/uploads/demo/category-jiang.png",
+        "banner_image": None,
+        "sort": 3,
+    },
+    {
+        "name": "双面控",
+        "subtitle": "冷暖可调　软硬可调",
+        "icon": "/uploads/demo/category-shuangmian.png",
+        "banner_image": None,
+        "sort": 4,
+    },
+    {
+        "name": "零压 · 深睡",
+        "subtitle": "睡眠无压力",
+        "icon": "/uploads/demo/category-lingya.png",
+        "banner_image": None,
+        "sort": 5,
+    },
+    {
+        "name": "“卷”起来",
+        "subtitle": "爱上卷包床垫",
+        "icon": "/uploads/demo/category-juan.png",
+        "banner_image": None,
+        "sort": 6,
+    },
+    {
+        "name": "次卧 · 不次等",
+        "subtitle": "卧室就要睡好觉",
+        "icon": "/uploads/demo/category-ciwo.png",
+        "banner_image": None,
+        "sort": 7,
+    },
+    {
+        "name": "薄垫 · 不薄待",
+        "subtitle": "厚度降低　睡感加分",
+        "icon": "/uploads/demo/category-baodian.png",
+        "banner_image": None,
+        "sort": 8,
+    },
 ]
 
 _RICH_TEXT_TMPL = (
@@ -33,111 +89,160 @@ _RICH_TEXT_TMPL = (
     "<img src=\"/uploads/demo/detail-common-1.jpg\" alt=\"工艺细节\" />"
 )
 
-# ---------------- ≥6 个产品（含详情图/实拍图/富文本），每分类一款 ----------------
+# ---------------- 8 个产品（spec.md §5.3），按序分挂 8 个分类各一款 ----------------
+# 规格统一 1800 × 2000 mm，睡感统一 舒适睡感（spec.md §5.3）。
 DEMO_PRODUCTS: list[dict] = [
     {
-        "category": "9M特制床垫",
-        "name": "9M 尊享特制床垫",
-        "model": "9M-ZX-180",
-        "slogan": "九区承托，为腰椎而生",
-        "spec": "1800*2000mm",
-        "sleep_feel": "软硬适中",
-        "main_image": "/uploads/demo/product-9m-zx-main.jpg",
+        "category": "6S专属床垫",
+        "name": "3D床垫",
+        "model": "LEKASI-3D-180",
+        "slogan": "六大专属，分龄深睡",
+        "spec": "1800 × 2000 mm",
+        "sleep_feel": "舒适睡感",
+        "main_image": "/uploads/demo/product-3d-main.jpg",
         "detail_images": [
-            "/uploads/demo/product-9m-zx-detail-1.jpg",
-            "/uploads/demo/product-9m-zx-detail-2.jpg",
+            "/uploads/demo/product-3d-detail-1.jpg",
+            "/uploads/demo/product-3d-detail-2.jpg",
         ],
         "real_images": [
-            "/uploads/demo/product-9m-zx-real-1.jpg",
-            "/uploads/demo/product-9m-zx-real-2.jpg",
+            "/uploads/demo/product-3d-real-1.jpg",
+            "/uploads/demo/product-3d-real-2.jpg",
         ],
         "sort": 1,
     },
     {
-        "category": "花筑手作",
-        "name": "花筑手作·云锦床垫",
-        "model": "HZ-YJ-001",
-        "slogan": "手工绗缝，云端睡感",
-        "spec": "1500*2000mm",
-        "sleep_feel": "偏软",
-        "main_image": "/uploads/demo/product-hz-yj-main.jpg",
-        "detail_images": ["/uploads/demo/product-hz-yj-detail-1.jpg"],
-        "real_images": ["/uploads/demo/product-hz-yj-real-1.jpg"],
+        "category": "手工 · 零胶虑",
+        "name": "幸福3号",
+        "model": "LEKASI-XF3-180",
+        "slogan": "大师手作，奢睡体验",
+        "spec": "1800 × 2000 mm",
+        "sleep_feel": "舒适睡感",
+        "main_image": "/uploads/demo/product-xf3-main.jpg",
+        "detail_images": [
+            "/uploads/demo/product-xf3-detail-1.jpg",
+            "/uploads/demo/product-xf3-detail-2.jpg",
+        ],
+        "real_images": [
+            "/uploads/demo/product-xf3-real-1.jpg",
+            "/uploads/demo/product-xf3-real-2.jpg",
+        ],
         "sort": 2,
     },
     {
-        "category": "卷绵时代",
-        "name": "卷绵时代·舒卷床垫",
-        "model": "JM-SJ-001",
-        "slogan": "一卷即达，开箱即睡",
-        "spec": "1800*2000mm",
-        "sleep_feel": "适中偏硬",
-        "main_image": "/uploads/demo/product-jm-sj-main.jpg",
+        "category": "姜大师 · 草本",
+        "name": "幸福2号",
+        "model": "LEKASI-XF2-180",
+        "slogan": "暖姜纤维，古法温养",
+        "spec": "1800 × 2000 mm",
+        "sleep_feel": "舒适睡感",
+        "main_image": "/uploads/demo/product-xf2-main.jpg",
         "detail_images": [
-            "/uploads/demo/product-jm-sj-detail-1.jpg",
-            "/uploads/demo/product-jm-sj-detail-2.jpg",
+            "/uploads/demo/product-xf2-detail-1.jpg",
+            "/uploads/demo/product-xf2-detail-2.jpg",
         ],
-        "real_images": ["/uploads/demo/product-jm-sj-real-1.jpg"],
+        "real_images": [
+            "/uploads/demo/product-xf2-real-1.jpg",
+            "/uploads/demo/product-xf2-real-2.jpg",
+        ],
         "sort": 3,
     },
     {
-        "category": "小斑马",
-        "name": "小斑马儿童护脊床垫",
-        "model": "XBM-HJ-001",
-        "slogan": "成长护脊，安心童眠",
-        "spec": "1200*2000mm",
-        "sleep_feel": "偏硬",
-        "main_image": "/uploads/demo/product-xbm-hj-main.jpg",
-        "detail_images": ["/uploads/demo/product-xbm-hj-detail-1.jpg"],
-        "real_images": ["/uploads/demo/product-xbm-hj-real-1.jpg"],
+        "category": "双面控",
+        "name": "幸福1号",
+        "model": "LEKASI-XF1-180",
+        "slogan": "冷暖可调，软硬可调",
+        "spec": "1800 × 2000 mm",
+        "sleep_feel": "舒适睡感",
+        "main_image": "/uploads/demo/product-xf1-main.jpg",
+        "detail_images": [
+            "/uploads/demo/product-xf1-detail-1.jpg",
+            "/uploads/demo/product-xf1-detail-2.jpg",
+        ],
+        "real_images": [
+            "/uploads/demo/product-xf1-real-1.jpg",
+            "/uploads/demo/product-xf1-real-2.jpg",
+        ],
         "sort": 4,
     },
     {
-        "category": "特制软床",
-        "name": "特制软床·伯爵",
-        "model": "TZ-BJ-001",
-        "slogan": "意式软靠，卧室主角",
-        "spec": "1800*2000mm（床架）",
-        "sleep_feel": "—",
-        "main_image": "/uploads/demo/product-tz-bj-main.jpg",
-        "detail_images": ["/uploads/demo/product-tz-bj-detail-1.jpg"],
+        "category": "零压 · 深睡",
+        "name": "幸福99床垫",
+        "model": "LEKASI-XF99-180",
+        "slogan": "睡眠无压力",
+        "spec": "1800 × 2000 mm",
+        "sleep_feel": "舒适睡感",
+        "main_image": "/uploads/demo/product-xf99-main.jpg",
+        "detail_images": [
+            "/uploads/demo/product-xf99-detail-1.jpg",
+            "/uploads/demo/product-xf99-detail-2.jpg",
+        ],
         "real_images": [
-            "/uploads/demo/product-tz-bj-real-1.jpg",
-            "/uploads/demo/product-tz-bj-real-2.jpg",
+            "/uploads/demo/product-xf99-real-1.jpg",
+            "/uploads/demo/product-xf99-real-2.jpg",
         ],
         "sort": 5,
     },
     {
-        "category": "抗菌软床",
-        "name": "抗菌软床·净眠",
-        "model": "KJ-JM-001",
-        "slogan": "银离子抑菌，洁净入眠",
-        "spec": "1500*2000mm（床架）",
-        "sleep_feel": "—",
-        "main_image": "/uploads/demo/product-kj-jm-main.jpg",
-        "detail_images": ["/uploads/demo/product-kj-jm-detail-1.jpg"],
-        "real_images": ["/uploads/demo/product-kj-jm-real-1.jpg"],
+        "category": "“卷”起来",
+        "name": "505压缩卷包床垫",
+        "model": "LEKASI-505-180",
+        "slogan": "爱上卷包床垫",
+        "spec": "1800 × 2000 mm",
+        "sleep_feel": "舒适睡感",
+        "main_image": "/uploads/demo/product-505-main.jpg",
+        "detail_images": [
+            "/uploads/demo/product-505-detail-1.jpg",
+            "/uploads/demo/product-505-detail-2.jpg",
+        ],
+        "real_images": [
+            "/uploads/demo/product-505-real-1.jpg",
+            "/uploads/demo/product-505-real-2.jpg",
+        ],
         "sort": 6,
     },
     {
-        "category": "助眠枕头",
-        "name": "助眠乳胶枕",
-        "model": "ZM-RJ-001",
-        "slogan": "曲线贴合，一夜好眠",
-        "spec": "600*400mm",
-        "sleep_feel": "支撑适中",
-        "main_image": "/uploads/demo/product-zm-rj-main.jpg",
-        "detail_images": ["/uploads/demo/product-zm-rj-detail-1.jpg"],
-        "real_images": ["/uploads/demo/product-zm-rj-real-1.jpg"],
+        "category": "次卧 · 不次等",
+        "name": "323特制版床垫",
+        "model": "LEKASI-323-180",
+        "slogan": "卧室就要睡好觉",
+        "spec": "1800 × 2000 mm",
+        "sleep_feel": "舒适睡感",
+        "main_image": "/uploads/demo/product-323-main.jpg",
+        "detail_images": [
+            "/uploads/demo/product-323-detail-1.jpg",
+            "/uploads/demo/product-323-detail-2.jpg",
+        ],
+        "real_images": [
+            "/uploads/demo/product-323-real-1.jpg",
+            "/uploads/demo/product-323-real-2.jpg",
+        ],
         "sort": 7,
+    },
+    {
+        "category": "薄垫 · 不薄待",
+        "name": "9M 卷绵特制床垫",
+        "model": "LEKASI-9M-180",
+        "slogan": "厚度降低，睡感加分",
+        "spec": "1800 × 2000 mm",
+        "sleep_feel": "舒适睡感",
+        "main_image": "/uploads/demo/product-9m-main.jpg",
+        "detail_images": [
+            "/uploads/demo/product-9m-detail-1.jpg",
+            "/uploads/demo/product-9m-detail-2.jpg",
+        ],
+        "real_images": [
+            "/uploads/demo/product-9m-real-1.jpg",
+            "/uploads/demo/product-9m-real-2.jpg",
+        ],
+        "sort": 8,
     },
 ]
 
 # ---------------- 2 条 banner（不同 jump_type） ----------------
 DEMO_BANNERS: list[dict] = [
     {
-        "image": "/uploads/demo/banner-juanmian.jpg",
-        "jump_type": int(BannerJumpType.CATEGORY),  # 2 → 跳分类（卷绵时代）
+        "image": "/uploads/demo/banner-juan.jpg",
+        "jump_type": int(BannerJumpType.CATEGORY),  # 2 → 跳分类（jump_value 为分类 id）
         "jump_value": "3",
         "sort": 1,
         "status": 1,
