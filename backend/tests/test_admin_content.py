@@ -239,11 +239,11 @@ class TestCategories:
 # ---------------- 产品 ----------------
 class TestProducts:
     async def test_list_products_filters(self, async_client: AsyncClient, auth_headers: dict):
-        # 全量：seed 8 个产品
+        # 全量：seed 11 个产品（8 主推 + 3 寝具）
         resp = await async_client.get(f"{ADMIN}/products", headers=auth_headers)
         assert resp.status_code == 200, resp.text
         data = resp.json()["data"]
-        assert data["total"] == 8 and len(data["items"]) == 8
+        assert data["total"] == 11 and len(data["items"]) == 11
         # 名称筛选
         resp = await async_client.get(
             f"{ADMIN}/products", headers=auth_headers, params={"name": "505压缩"}

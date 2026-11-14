@@ -164,35 +164,36 @@ class TestProducts:
         assert resp.status_code == 200, resp.text
         body = resp.json()
         data = body["data"]
-        assert data["total"] == 8
-        assert len(data["items"]) == 8
+        assert data["total"] == 11  # 8 主推 + 3 寝具（9B/9D/9P）
+        assert len(data["items"]) == 11
         assert data["page"] == 1 and data["size"] == 20
 
     async def test_eight_products_map_to_eight_categories(
         self, async_client: AsyncClient
     ):
-        """BE-10 verify：8 条产品 category_name 全落在八分类内，规格/睡感统一。"""
+        """BE-10 verify：11 条产品 category_name 全落在八分类内，规格/睡感统一。"""
         category_names = {"6S专属床垫", "手工 · 零胶虑", "姜大师 · 草本", "双面控",
                           "零压 · 深睡", "“卷”起来", "次卧 · 不次等", "薄垫 · 不薄待"}
         resp = await async_client.get(PRODUCTS_URL, params={"size": 50})
         data = resp.json()["data"]
-        assert data["total"] == 8
+        assert data["total"] == 11
         for item in data["items"]:
             assert item["category_name"] in category_names
             assert item["spec"] == "1800 × 2000 mm"
             assert item["sleep_feel"] == "舒适睡感"
-        # 一分类一款，覆盖全部分类
+        # 八分类全部有产品覆盖；每类至少一款（次卧 · 不次等因寝具三款共 4 款）
         assert {i["category_name"] for i in data["items"]} == category_names
         assert {i["name"] for i in data["items"]} == {
             "3D床垫", "幸福3号", "幸福2号", "幸福1号", "幸福99床垫",
             "505压缩卷包床垫", "323特制版床垫", "9M 卷绵特制床垫",
+            "9B 特制软床", "9D 抗菌软床", "9P 助眠枕头",
         }
 
     async def test_list_pagination_pages(self, async_client: AsyncClient):
         resp = await async_client.get(PRODUCTS_URL, params={"page": 3, "size": 3})
         data = resp.json()["data"]
-        assert data["total"] == 8
-        assert len(data["items"]) == 2  # 8 = 3+3+2
+        assert data["total"] == 11
+        assert len(data["items"]) == 3  # 11 = 3+3+3+2
 
     async def test_size_over_50_rejected(self, async_client: AsyncClient):
         resp = await async_client.get(PRODUCTS_URL, params={"page": 1, "size": 51})
@@ -211,7 +212,7 @@ class TestProducts:
         by_model = await async_client.get(PRODUCTS_URL, params={"keyword": "LEKASI-3D"})
         assert by_model.json()["data"]["total"] == 1
         by_spec = await async_client.get(PRODUCTS_URL, params={"keyword": "1800 × 2000"})
-        assert by_spec.json()["data"]["total"] == 8
+        assert by_spec.json()["data"]["total"] == 11
         no_hit = await async_client.get(PRODUCTS_URL, params={"keyword": "不存在的关键词"})
         assert no_hit.json()["data"]["total"] == 0
 
@@ -230,7 +231,7 @@ class TestProducts:
     async def test_sort_newest_and_comprehensive(self, async_client: AsyncClient):
         resp_new = await async_client.get(PRODUCTS_URL, params={"sort": "newest"})
         assert resp_new.status_code == 200
-        assert resp_new.json()["data"]["total"] == 8
+        assert resp_new.json()["data"]["total"] == 11
         resp_comp = await async_client.get(PRODUCTS_URL, params={"sort": "comprehensive"})
         assert resp_comp.status_code == 200
         resp_bad = await async_client.get(PRODUCTS_URL, params={"sort": "random"})
@@ -240,7 +241,7 @@ class TestProducts:
         await _set_product_status("LEKASI-505-180", 0)
         resp = await async_client.get(PRODUCTS_URL, params={"size": 50})
         data = resp.json()["data"]
-        assert data["total"] == 7
+        assert data["total"] == 10  # 11 款下架 1 款
         models = [i["model"] for i in data["items"]]
         assert "LEKASI-505-180" not in models
 

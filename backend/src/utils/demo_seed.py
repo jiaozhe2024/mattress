@@ -236,6 +236,63 @@ DEMO_PRODUCTS: list[dict] = [
         ],
         "sort": 8,
     },
+    # ---- 寝具三款：首页 9B/9D/9P 入口是「产品型号入口」（见 references/home.png），
+    # 点击按型号搜索（keyword=9B/9D/9P），因此产品名与型号都必须能被 LIKE 命中。
+    # 归属「次卧 · 不次等」（软床/枕头多用于次卧，八分类中语义最近者）。
+    {
+        "category": "次卧 · 不次等",
+        "name": "9B 特制软床",
+        "model": "LEKASI-9B-180",
+        "slogan": "软床特制，次卧也讲究",
+        "spec": "1800 × 2000 mm",
+        "sleep_feel": "舒适睡感",
+        "main_image": "/uploads/demo/product-9b-main.jpg",
+        "detail_images": [
+            "/uploads/demo/product-9b-detail-1.jpg",
+            "/uploads/demo/product-9b-detail-2.jpg",
+        ],
+        "real_images": [
+            "/uploads/demo/product-9b-real-1.jpg",
+            "/uploads/demo/product-9b-real-2.jpg",
+        ],
+        "sort": 9,
+    },
+    {
+        "category": "次卧 · 不次等",
+        "name": "9D 抗菌软床",
+        "model": "LEKASI-9D-180",
+        "slogan": "抗菌面料，安心好眠",
+        "spec": "1800 × 2000 mm",
+        "sleep_feel": "舒适睡感",
+        "main_image": "/uploads/demo/product-9d-main.jpg",
+        "detail_images": [
+            "/uploads/demo/product-9d-detail-1.jpg",
+            "/uploads/demo/product-9d-detail-2.jpg",
+        ],
+        "real_images": [
+            "/uploads/demo/product-9d-real-1.jpg",
+            "/uploads/demo/product-9d-real-2.jpg",
+        ],
+        "sort": 10,
+    },
+    {
+        "category": "次卧 · 不次等",
+        "name": "9P 助眠枕头",
+        "model": "LEKASI-9P-180",
+        "slogan": "护颈助眠，一夜到天亮",
+        "spec": "1800 × 2000 mm",
+        "sleep_feel": "舒适睡感",
+        "main_image": "/uploads/demo/product-9p-main.jpg",
+        "detail_images": [
+            "/uploads/demo/product-9p-detail-1.jpg",
+            "/uploads/demo/product-9p-detail-2.jpg",
+        ],
+        "real_images": [
+            "/uploads/demo/product-9p-real-1.jpg",
+            "/uploads/demo/product-9p-real-2.jpg",
+        ],
+        "sort": 11,
+    },
 ]
 
 # ---------------- 2 条 banner（不同 jump_type） ----------------

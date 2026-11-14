@@ -158,7 +158,7 @@ async def test_seed_demo_data_counts_and_idempotency():
 
         assert result.skipped is False
         assert result.categories == 8
-        assert result.products == 8
+        assert result.products == 11  # 8 款主推 + 3 款寝具（9B/9D/9P，首页型号入口）
 
         async with db_session() as session:
             categories = await session.scalar(
@@ -178,7 +178,7 @@ async def test_seed_demo_data_counts_and_idempotency():
             )
 
         assert categories == 8
-        assert products == 8
+        assert products == 11
         assert len(banners) == 2
         jump_types = {b.jump_type for b in banners}
         assert len(jump_types) == 2, "banner 必须覆盖不同 jump_type"
