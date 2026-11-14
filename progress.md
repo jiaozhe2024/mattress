@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-11-14 MP-02 首页 V3 还原 验收通过（Hermes）
+
+CC 派活 `proc_69d4cf83e08d`，跑 55 分钟自然结束（**未被看门狗误杀**——CPU 时间采样确认持续增长，验证了 `addf4cd` 修复生效）。6 个分步提交：
+
+| commit | 内容 |
+|---|---|
+| `8c8ad68` | `homeModel.ts` 内容模型 + 17 单测（静态文案/排序截断/双通道/指示点） |
+| `ead9a7f` | `frame/SelectFab.vue` 胶囊 64×42，删 MP-01 圆形 FAB + main.ts 全局注册，5 单测 |
+| `4b0b1e9` | `WxCategory` 补 subtitle/banner_image；filter store 加 requestedKeyword（与分类互斥），5 单测 |
+| `4b0a9b7` | `pages/index/index.vue` 整块重写（旧 V2 结构全删），19 单测 |
+| `33a71a4` | `product/list.vue` 消费关键词请求（回填搜索框+历史+检索） |
+| `d75bf2e` | e2e 按 V3 重写 + sprint-output |
+
+### Hermes 独立复跑
+- `npx vitest run` → **226 passed / 19 files**（基线 183，+43）
+- `npm run type-check` → **exit 0**
+- `npm run build:mp-weixin` → **DONE Build complete**
+- **硬编码色值 0 处、token 变量引用 69 处** —— MP-07 踩过的坑这次没重犯
+- 逐区块比对 spec.md §5.1：主视觉（radius-16/navy/px24 pt24 pb16/gap8/Inter Bold 13 yellow 字距2/Bold 30 行高1.25）、系列卡（h76/radius-8/gap5 两列）、寝具卡（h90/radius-8）、SelectFab（64×42/radius-20/yellow）全部吻合
+- 文案与 `homeModel.ts` 常量逐字对照 spec，一致
+- Q14（轮播保留，仅1张隐藏指示点）、Q15（banner_image 优先/文字降级 + 加载失败兜底）均已落实
+- e2e automator 段 **exit 124 超时**（开发者工具需扫码+服务端口），与 CC 报告一致，未伪造
+
+### 遗留（记入后续任务）
+1. **seed 无 9B/9D/9P 产品**：`keyword=9B` 返回 0 条。链路正确（Pinia→回填→检索），需后端补型号数据或确认检索口径
+2. 图片 404（`/uploads/demo/*` 未上传），页面走占位层，素材补齐后无需改码
+3. 服务卡 image 为空串、客服 corpId 为占位，待运营回填
+4. SelectFab 用 `fixed`（设计稿写 absolute），为保持滚动常驻；CC 已在 sprint-output 说明
+5. **轻微性能点**：`product/list.vue` onShow 切分类时 `void search("")` 与 `setCategory()` 并发触发两次 reload，有 `requestSeq` 兜底不影响正确性，MP-03B 重写时一并整理
+
+---
+
 ## 2026-11-14 V3 设计基线落地启动 + BE-10 验收通过（Hermes）
 
 **背景**：用户更新设计文档，`docs/design/` 新增 LEKASI V3 基线包（10 张 `references/*.png` + `spec.md` + `design-tokens.md` + `open-questions.md` + `visual-checklist.md`）。V3 与既有实现结构冲突，用户 2026-11-14 决策如下：
