@@ -363,7 +363,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
 .home-body {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: $space-20;
   /* 底部留白：内容不被原生 TabBar 与选款 FAB 遮挡 */
   padding: $space-16 $space-16 90px;
 }
@@ -374,7 +374,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
   flex-direction: column;
   align-items: center;
   gap: $space-12;
-  padding: 60px $space-16;
+  padding: $space-60 $space-16;
 }
 
 .home-state-text {
@@ -473,7 +473,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: $space-5;
   height: $space-24;
 }
 
@@ -499,7 +499,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
 .home-series-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: $space-5;
 }
 
 .home-series-card {
@@ -526,7 +526,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: $space-2;
   padding: 0 $space-8;
   box-sizing: border-box;
 }
@@ -551,7 +551,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
 
 .home-bedding-row {
   display: flex;
-  gap: 6px;
+  gap: $space-6;
 }
 
 .home-bedding-card {
@@ -599,7 +599,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
 
 .home-services-row {
   display: flex;
-  gap: 6px;
+  gap: $space-6;
 }
 
 .home-service-card {
@@ -636,8 +636,8 @@ function onQuickEntryTap(key: QuickEntryKey): void {
 .home-service-text {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 0 6px 10px;
+  gap: $space-3;
+  padding: 0 $space-6 $space-10;
   box-sizing: border-box;
 }
 
@@ -668,7 +668,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
   flex: 1;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: $space-10;
   height: 62px;
   border-radius: $radius-8;
   background-color: $color-yellow-bg;

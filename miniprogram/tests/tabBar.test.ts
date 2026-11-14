@@ -82,7 +82,7 @@ describe("TabBar（Q1：three / two 同一组件 variant）", () => {
     };
     const wrapper = mountTabBar({ variant: "three" });
     await wrapper.findAll(".tabbar-item")[1].trigger("tap");
-    expect(calls).toEqual(["/pages/product/list"]);
+    expect(calls).toEqual(["/pages/product/category"]);
     expect(wrapper.emitted("change")?.[0]).toEqual([
       1,
       expect.objectContaining({ key: "product" }),

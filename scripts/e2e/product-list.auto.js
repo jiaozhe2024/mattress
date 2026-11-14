@@ -130,12 +130,13 @@ async function setKeyword(page, value) {
 }
 
 async function runAssertions(miniProgram, baseline) {
-  await miniProgram.switchTab("/pages/product/list");
+  // MP-03A 起产品列表脱离 tabBar（「产品」tab = 分类页），以普通页 navigateTo 进入
+  await miniProgram.navigateTo("/pages/product/list");
   await sleep(1200);
   const page = await miniProgram.currentPage();
   assert(
     page && page.path === "pages/product/list",
-    `switchTab 应落在产品列表页，实际 ${page && page.path}`
+    `navigateTo 应落在产品列表页，实际 ${page && page.path}`
   );
 
   // [1] 分类侧边导航：侧边项 = 后端分类数 + 1（「全部」）

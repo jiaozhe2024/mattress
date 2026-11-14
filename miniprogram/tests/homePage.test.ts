@@ -228,7 +228,7 @@ describe("首页交互", () => {
     const store = useProductFilterStore();
     expect(store.requestedCategoryId).toBe(2);
     expect(store.requestedKeyword).toBeNull();
-    expect(uni.switchTab).toHaveBeenCalledWith({ url: "/pages/product/list" });
+    expect(uni.switchTab).toHaveBeenCalledWith({ url: "/pages/product/category" });
   });
 
   it("点寝具卡(9B)：Pinia 写 keyword=9B + switchTab 产品 tab（不是分类）", async () => {

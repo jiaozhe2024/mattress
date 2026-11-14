@@ -6,6 +6,9 @@
  * V3 产品页无左侧分类侧边导航、无底部已选栏（那些属选品页 MP-05A）。
  * MP-03B 会重写本页。当前仅作功能骨架保留。
  *
+ * MP-03A 起本页脱离 tabBar（「产品」tab 改为 pages/product/category），
+ * 由分类页/首页以 navigateTo 进入，支持 ?category_id= 初始分类。
+ *
  * token 沿用设计基线（LEKASI navy #1A2260 / yellow #F7C400 / cream #FDFBF5）。
  * 搜索栏（300ms 防抖 + 本地历史 10 条）/ 分类侧边导航 / 排序 Tab（综合/推荐/新品）/
  * 宫格·列表视图切换 / 产品卡片选款 / 底部已选栏。数据接 GET /wxapi/products + /wxapi/categories。
@@ -21,6 +24,7 @@ import {
 import ProductCard from "@/components/product/ProductCard.vue";
 import SelectedBar from "@/components/product/SelectedBar.vue";
 import SelectFab from "@/components/frame/SelectFab.vue";
+import WechatNav from "@/components/frame/WechatNav.vue";
 import { SCHEME_EDIT_PAGE } from "@/config";
 import { useProductList } from "@/composables/useProductList";
 import { useProductFilterStore } from "@/stores/useProductFilterStore";
@@ -64,6 +68,8 @@ const panelOpen = ref(false);
 const viewMode = ref<"grid" | "list">("grid");
 
 let initialized = false;
+/** onLoad 收到的 category_id 查询参数（onShow 首次执行时消费）。 */
+let pendingQueryCategoryId: number | null = null;
 let historyHideTimer: ReturnType<typeof setTimeout> | null = null;
 
 const showHistoryPanel = computed(
@@ -100,12 +106,25 @@ const debouncedSearch = debounce((raw: string): void => {
   void search(raw);
 }, SEARCH_DEBOUNCE_MS);
 
-onLoad(() => {
+onLoad((options) => {
   history.value = loadSearchHistory();
   void loadCategories();
+  // MP-03A：分类页以 navigateTo 带 category_id 进入（普通页，可带参）
+  const rawCategoryId = Number(options?.category_id ?? "");
+  if (Number.isInteger(rawCategoryId) && rawCategoryId > 0) {
+    pendingQueryCategoryId = rawCategoryId;
+  }
 });
 
 onShow(() => {
+  // MP-03A：分类页 navigateTo 传入的 category_id（优先于旧 tab 的 Pinia 通道）
+  if (pendingQueryCategoryId !== null) {
+    const queryCategoryId = pendingQueryCategoryId;
+    pendingQueryCategoryId = null;
+    initialized = true;
+    void setCategory(queryCategoryId);
+    return;
+  }
   // 首页寝具入口经 Pinia 传入的型号关键词（Q15：9B/9D/9P → 产品页搜索）
   const requestedKeyword = filterStore.requestedKeyword;
   if (requestedKeyword !== null) {
@@ -277,6 +296,7 @@ function onFooterTap(): void {
 
 <template>
   <view class="pl-page">
+    <WechatNav title="产品中心" back />
     <view class="pl-header">
       <view class="pl-search-wrap">
         <view class="pl-search-row">

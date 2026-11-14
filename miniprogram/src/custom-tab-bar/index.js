@@ -16,7 +16,7 @@ const LIST = [
   },
   {
     key: "product",
-    pagePath: "/pages/product/list",
+    pagePath: "/pages/product/category",
     text: "产品",
     icon: "/static/tabbar/grid-normal.png",
     activeIcon: "/static/tabbar/grid-active.png",

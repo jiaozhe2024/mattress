@@ -104,7 +104,7 @@ function onTap(item: TabBarItem, index: number): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: $space-3;
   width: 64px;
   opacity: 0.6;
 }

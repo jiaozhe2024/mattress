@@ -98,13 +98,25 @@ $line-height-15-fixed: 22px;
 $line-height-14-fixed: 20px;
 $line-height-13-fixed: 19px;
 
-/* ---------------- 间距 ---------------- */
+/* ---------------- 间距 ----------------
+ * design-tokens.md §间距与布局 只列了 16/20/28/12/8/9 等「布局级」值，
+ * 但 V3 稿的组件内部还实测用到 2/3/5/6/10/18 等「微间距」值。
+ * 这里补全为完整阶梯，避免页面层写裸数值（与「页面层禁止自定义色值」同源约束）。
+ */
+$space-2: 2px;   // 排序指示条 gap、轮播点微调
+$space-3: 3px;   // 底部 Tab 项内纵向 gap、标签行内部
 $space-4: 4px;
+$space-5: 5px;   // 首页轮播指示 gap5、系列卡列间距、寝具卡 gap5
+$space-6: 6px;   // 横幅文案 gap6、系列卡间 gap6、服务卡 gap6
 $space-8: 8px;
+$space-10: 10px; // 快捷入口 gap10、详情标签 gap10
 $space-12: 12px;
 $space-16: 16px;
+$space-18: 18px; // 分类列表系列横幅 p18
+$space-20: 20px; // 首页正文板块间距、操作组 gap20
 $space-24: 24px;
 $space-32: 32px;
+$space-60: 60px; // 空/错误态垂直留白
 
 /* ---------------- 全局结构尺寸 ---------------- */
 $status-bar-height: 32px; // 微信状态栏（设计基准；运行时用系统值）
@@ -217,12 +229,20 @@ $version-bar-height: 24px; // Q12 版本标识条：仅登记，不实现
   --line-height-13-fixed: 19px;
 
   /* 间距 */
+  --space-2: 2px;
+  --space-3: 3px;
   --space-4: 4px;
+  --space-5: 5px;
+  --space-6: 6px;
   --space-8: 8px;
+  --space-10: 10px;
   --space-12: 12px;
   --space-16: 16px;
+  --space-18: 18px;
+  --space-20: 20px;
   --space-24: 24px;
   --space-32: 32px;
+  --space-60: 60px;
 
   /* 全局结构尺寸 */
   --status-bar-height: 32px;

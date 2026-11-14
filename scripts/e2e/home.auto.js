@@ -205,7 +205,7 @@ async function runAssertions(miniProgram, homeData, categoriesData) {
   let current = await miniProgram.currentPage();
   assert(
     current.path === "pages/product/list",
-    `点寝具 9B 应 switchTab 产品列表，实际 ${current.path}`
+    `点寝具 9B 应进入产品列表页（经分类页 Pinia 转发），实际 ${current.path}`
   );
   const searchInput = await waitFor(current, ".pl-search-input", 8000);
   assert(searchInput, "产品列表页应存在搜索框（.pl-search-input）");

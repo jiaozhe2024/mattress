@@ -72,7 +72,7 @@ function goSelection(): void {
   justify-content: center;
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
+  padding: 0 $space-5;
   box-sizing: border-box;
   border-radius: $radius-pill;
   background-color: $color-navy;

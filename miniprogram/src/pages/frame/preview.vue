@@ -63,15 +63,15 @@ function toggleVariant(): void {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  gap: $space-16;
+  padding: $space-16;
 }
 
 .frame-block {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: $space-8;
+  padding: $space-12;
   border-radius: 8px;
   background-color: $color-text-inv;
 }

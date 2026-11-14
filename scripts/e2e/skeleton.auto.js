@@ -26,7 +26,7 @@ const CLI_PATH =
 
 const EXPECTED_TABS = [
   { pagePath: "pages/index/index", label: "首页" },
-  { pagePath: "pages/product/list", label: "产品" },
+  { pagePath: "pages/product/category", label: "产品" },
   { pagePath: "pages/user/index", label: "我的" },
 ];
 

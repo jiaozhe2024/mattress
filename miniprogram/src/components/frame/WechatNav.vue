@@ -115,7 +115,7 @@ function goBack(): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 $space-16;
   box-sizing: border-box;
 }
 

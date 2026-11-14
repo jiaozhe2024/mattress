@@ -16,7 +16,7 @@ export type TabBarVariant = "three" | "two";
 
 export const TAB_BAR_THREE: readonly TabBarItem[] = [
   { key: "home", label: "首页", icon: "home", path: "/pages/index/index" },
-  { key: "product", label: "产品", icon: "grid", path: "/pages/product/list" },
+  { key: "product", label: "产品", icon: "grid", path: "/pages/product/category" },
   { key: "user", label: "我的", icon: "user", path: "/pages/user/index" },
 ];
 

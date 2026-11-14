@@ -73,7 +73,7 @@ describe("SelectFab（V3：64×42 胶囊，spec.md §5.1 ⑤）", () => {
     await wrapper.find(".select-fab").trigger("tap");
     expect(calls).toEqual([
       `navigateTo:${SELECTION_PAGE}`,
-      "switchTab:/pages/product/list",
+      "switchTab:/pages/product/category",
     ]);
   });
 });
