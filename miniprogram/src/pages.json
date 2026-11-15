@@ -36,6 +36,13 @@
       }
     },
     {
+      "path": "pages/scheme/edit",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "LEKASI 乐卡思"
+      }
+    },
+    {
       "path": "pages/user/index",
       "style": {
         "navigationStyle": "custom",

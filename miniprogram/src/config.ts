@@ -3,8 +3,14 @@
 /** 选品页（MP-05A 已落地）；navigateTo 失败仍回退产品分类 tab（SelectFab）。 */
 export const SELECTION_PAGE = "/pages/scheme/selection";
 
-/** 方案编辑页（MP-05 落地前产品列表底部已选栏 OK 回退为 toast 保留选品）。 */
+/** 方案编辑页（MP-05B 已落地；空态 / 填充态同页）。 */
 export const SCHEME_EDIT_PAGE = "/pages/scheme/edit";
+
+/** 方案列表页（MP-05C 未落地前 navigateTo fail → toast 兜底）。 */
+export const SCHEME_LIST_PAGE = "/pages/scheme/list";
+
+/** 预览分享页（MP-05D 未落地前 navigateTo fail → toast 兜底；保存先行）。 */
+export const SCHEME_PREVIEW_PAGE = "/pages/scheme/preview";
 
 /** 「产品」tab 页自 MP-03A 起为分类列表页，tabBar 跳转一律 switchTab。 */
 export const PRODUCT_LIST_TAB = "/pages/product/category";
