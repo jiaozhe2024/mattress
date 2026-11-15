@@ -16,6 +16,7 @@ const UNI_ELEMENTS = new Set([
   "button",
   "input",
   "navigator",
+  "rich-text",
 ]);
 
 export default defineConfig({

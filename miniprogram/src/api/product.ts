@@ -1,6 +1,7 @@
 import { get } from "@/utils/request";
 import type { Product, WxProductListItem, WxProductPage } from "@/types/product";
 import type { WxCategory } from "@/types/home";
+import type { WxProductDetail } from "@/components/product/productDetailModel";
 
 /** 后端 BE-05 支持的排序值（schemas/wx_content.py ProductSort）。 */
 export type BackendProductSort = "comprehensive" | "newest";
@@ -48,6 +49,16 @@ export function getProducts(query: ProductQuery = {}): Promise<WxProductPage> {
 /** 启用分类列表（侧边导航数据源）。 */
 export function getCategories(): Promise<WxCategory[]> {
   return get<WxCategory[]>("/wxapi/categories", undefined, { silent: true });
+}
+
+/**
+ * 产品详情（仅上架；下架/不存在后端返回 404）。silent：错误由页面统一渲染
+ * 错误态（Q8 缺失态），不叠加统一 toast。
+ */
+export function getProductDetail(id: number): Promise<WxProductDetail> {
+  return get<WxProductDetail>(`/wxapi/products/${id}`, undefined, {
+    silent: true,
+  });
 }
 
 /** 列表项 → 选品 store 的 Product（store 契约不含分类字段，显式映射避免多余字段扩散）。 */
