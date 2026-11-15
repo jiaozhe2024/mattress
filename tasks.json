@@ -228,7 +228,7 @@
       "id": "MP-05D",
       "title": "预览分享页（V3 还原：长流式海报卡 + 双按钮）",
       "description": "【MP-05C 后派】新建 `pages/scheme/preview.vue`，依据 `references/plan-05-preview-share.png` + `spec.md §5.9`，数据接 `GET /wxapi/schemes/{id}`（本人）或 `/wxapi/schemes/{id}/public`（访客）。①导航 WechatNav 二级页，标题 `LEKASI 乐卡思`。②方案标题 p20：Medium 21 text1 行高 1.45 居中。③分享产品列表 bg #f4f6fa p16 gap12：分享产品卡白底圆角 8 p8 纵向 —— 产品介绍海报 bg cream 圆角 8（产品标题 p16 gap6：`LEKASI 乐卡思` Inter Bold 10 navy 字距 1、产品名 Bold 23 navy、卖点 Regular 11 text2 行高 1.45；床垫产品图 h190 object-cover；产品信息 bg yellowBg px16 py12 gap6：feature 行 Medium 11 text1、规格行 Regular 10 text2）+ 产品底注 px8 py12 `LEKASI 乐卡思 · 产品推荐` Regular 11 text3 行高 1.45。**数据必须取快照 product_snapshot，不得回查实时产品**（核心约定 10）。④底部操作条 bg navy p14 gap12：`返回` 146×42 圆角 20 bg textInv border 1px #8890b8 文字 Medium 14 text2 行高 20、`立即分享` 189×42 圆角 20 bg yellow 文字 Medium 15 navy 行高 22。⑤交互：`返回` 回上一页；`立即分享` 走 onShareAppMessage（path 带 id）；分享成功回调 POST `/wxapi/schemes/{id}/share` 计数 +1。**访客态（无登录或非本人）只读：隐藏编辑/保存入口，不显示返回编辑**。⑥**不实现版本标识条**；不做分享图片合成（BE-07 推迟）。⑦交付 vitest + `scripts/e2e/scheme-preview.auto.js`。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "MP-07, MP-05B",
       "verify": "`npm run build:mp-weixin` 0 error；e2e 断言：方案标题居中 21px、每产品海报块渲染快照字段（改实时产品名后预览仍为旧值）、底注文案存在、双按钮宽度 146/189、点返回回上一页、模拟分享成功回调后计数 +1、访客态无编辑入口；截图与 `plan-05-preview-share.png` 比对；无版本标识条",

@@ -4,6 +4,52 @@
 
 ---
 
+## 2026-11-15 MP-05D 预览分享页完成 —— MP-05 方案链路闭环（Hermes 实现）
+
+### 交付
+| 文件 | 内容 |
+|---|---|
+| `pages/scheme/preview.vue` | 方案标题（Medium21 居中）+ 每产品一张海报 + 底注 + 底栏双按钮（146/189） |
+| `schemePreviewModel.ts` | `previewViewsOf`（快照→海报视图）+ 分享路径/标题（30 字截断） |
+| `api/scheme.ts` | 补 `getPublicScheme`（匿名只读）+ `shareScheme`（计数+1） |
+| 单测 | 14 项 |
+| e2e | 双段 + 端口预检，静态 **39 项全过** |
+
+### 关键设计
+**数据双通道**：先 `getSchemeDetail`（本人，完整快照）→ 失败回落 `getPublicScheme`
+（访客免登录只读）→ 都失败走错误态。不用 token 判定身份，避免「有 token 但非本人」边界。
+
+**核心约定 10**：海报全部读 `product_snapshot`，页面**零**实时产品请求（e2e 静态断言守住）。
+
+### 过程中修的真问题
+1. **`isVisitor` 只赋值未消费** → 明确访客回退语义（本人 navigateBack / 访客 reLaunch 首页）。
+   spec 底栏本就只有两按钮，所以访客与本人视觉一致是**设计意图**，不是缺陷。
+2. **e2e node 侧不发 Content-Length 导致 FastAPI 422**（curl 会自动加，所以肉眼看不出来）
+   → 显式设 `Content-Length`。
+3. **超长标题测试字符串实际只有 29 字**，没越过 30 阈值 → 改 `"一".repeat(40)` 明确定长，
+   并补 30/31 字边界用例（不迁就实现改测试）。
+4. **`$space-14` 缺失**：spec 底栏 p14，token 阶梯只有 12/16 → 补上，避免逼出裸值。
+
+### 验证
+- `npx vitest run` → **459 passed / 32 files**
+- `type-check` 0 / `build` 0 err
+- e2e 静态 → **39 PASS / 0 FAIL**
+- token 合规：hex=0 / 裸间距=0 / 裸行高=0
+
+### 提交
+`d29e84e`
+
+### MP-05 链路闭环 ✅
+选品（A）→ 编辑保存（B/B2）→ 列表管理（C）→ 预览分享（D）
+
+### 遗留
+1. 动态 e2e 全部待 DevTools 服务端口（9420）
+2. 分享计数在 `onShareAppMessage` 内立即 +1（微信无可靠「分享成功」回调，取消也计数），
+   后续可改用 `wx.shareAppMessage` success 回调
+3. 剩余任务：BE-09（Admin 数据管理）、MP-06（我的）
+
+---
+
 ## 2026-11-15 MP-05C 方案列表页 + MP-05B2 编辑页载入已有方案（Hermes 直接实现）
 
 ### 为什么没派 CC
