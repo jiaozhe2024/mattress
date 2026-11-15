@@ -2,6 +2,7 @@ import { get } from "@/utils/request";
 import type {
   WxArticleDetail,
   WxArticlePage,
+  WxBrandInfo,
   WxHome,
 } from "@/types/home";
 
@@ -30,4 +31,9 @@ export function getArticle(id: number): Promise<WxArticleDetail> {
   return get<WxArticleDetail>(`/wxapi/articles/${id}`, undefined, {
     silent: true,
   });
+}
+
+/** 品牌配置（单行；无数据时后端返回 data=null）。 */
+export function getBrand(): Promise<WxBrandInfo | null> {
+  return get<WxBrandInfo | null>("/wxapi/brand", undefined, { silent: true });
 }

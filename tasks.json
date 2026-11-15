@@ -238,7 +238,7 @@
       "id": "MP-06",
       "title": "我的（V3 还原：品牌卡 + 客服卡，无选款 FAB）",
       "description": "【MP-03B 后派，可与 MP-04 并行】重写 `pages/user/index.vue`（现为占位页），依据 `references/mine.png` + `spec.md §5.10`，数据接 `GET /wxapi/brand`。①导航 WechatNav **一级页**（左侧 `LEKASI` 品牌缩写，非返回箭头），标题 `LEKASI 乐卡思`。②**关于乐卡思** bg navy px20 pt26 pb20 gap24：`LEKASI 乐卡思` Inter Bold 15 yellow 字距 2；品牌理念 py20 gap14 居中 —— `遇见舒适好眠` Medium 31 textInv、标题强调条 72×3 bg yellow、三行段落 Regular 12 textInv 行高 1.45（`从一张床垫开始，认真对待每一次休息。` / `在这里了解产品、挑选睡感，` / `也把喜欢的选择分享给朋友与家人。`；文案取品牌配置 intro，取不到时用稿内文案兜底）；家居展示空间图 h315 圆角 8 object-cover + 图注 `家居展示空间示意` Regular 10 navy50 居中 行高 1.45；品牌联系入口 gap10 居中 —— `了解乐卡思` 220×42 圆角 20 bg yellow 文字 Medium 15 navy 行高 22（Q7 DEFERRED：品牌介绍页无画板，点击 toast「功能开发中」）、`产品咨询 · 体验交流 · 合作联系` Regular 12 textInv 居中。③**客服服务** bg #111639 px20 py24 gap20：客服标题 gap10 居中 —— message-circle 30×30 + `乐卡思客服` Regular 27 textInv；客服内容 gap8 三列等分居中纵向 gap5 —— 项目 Regular 12 textInv（产品咨询 / 睡感选择 / 使用建议）+ 说明 Regular 10 navy50（了解更多）。点客服项 → wx.openCustomerServiceChat，失败兜底 toast。④底部 TabBar three，「我的」选中；**无选款 FAB**。⑤**Q2 DEFERRED：照稿不加「我的方案」入口**（优化阶段再补，需在 sprint_output 标注为已知缺口）。⑥**不实现版本标识条**。⑦交付 vitest + `scripts/e2e/mine.auto.js`。",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "blocked_by": "MP-07, BE-05",
       "verify": "`npm run build:mp-weixin` 0 error；e2e 断言：品牌卡 bg #1a2260、主标语 31px 居中、强调条 72×3、空间图 315 高、`了解乐卡思` 按钮 220×42、客服卡 bg #111639、三列服务项各含名称+说明、TabBar「我的」选中、**页面无选款 FAB**；截图与 `mine.png` 逐区块比对；无版本标识条",

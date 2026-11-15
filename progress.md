@@ -4,6 +4,55 @@
 
 ---
 
+## 2026-11-15 MP-06 我的页完成 —— 小程序端全部页面收尾（Hermes 实现）
+
+### 交付
+| 文件 | 内容 |
+|---|---|
+| `pages/user/index.vue` | 整页重写（原占位页）：品牌卡 + 空间图 + 联系入口 + 客服卡 |
+| `components/user/mineModel.ts` | 文案常量 + intro/空间图/拨号/客服可用性四个纯函数 |
+| `api/content.ts`、`types/home.ts` | 补 `getBrand()` + `WxBrandInfo` |
+| `styles/tokens.scss` | 补 `$space-26`（spec pt26，原阶梯缺失） |
+| 单测 | 18 项 |
+| e2e | 62 项静态全过 + 硬超时兜底 |
+
+### 关键设计
+**无加载态/错误态**：品牌文案/空间图/电话全部走 mineModel 的兜底函数，
+后台无配置时直接渲染稿内文案，不把运维缺失暴露成空白页。
+
+**尺寸来自像素测量，不是估算**：采样 mine.png（350px 宽 = 设计 375px，缩放 0.9333），
+实测品牌卡 `#1a2260` 左右各 4px 外边距、空间图 315 高、黄按钮 205/0.9333≈220×42、
+客服图标 `#f7c400`。
+
+### 过程中修的真问题
+1. **挂死 23 小时的僵尸 e2e 进程**：`PID 45161 product-category.auto.js`，Nov 14 17:12
+   启动，CPU 累计 0.82s 零增长，socket 与 wechatwebdevtools 互等。已 kill。
+2. **根因：automator 无超时**。`launch`/`reLaunch` 在 DevTools 未就绪时无限阻塞，
+   既无 reject 也无超时参数。外层 Python 包装的 `while time.time()-start < 170:
+   p.stdout.readline()` 也救不了——条件只在 readline 返回后检查。
+   本轮给 mine.auto.js 加 `withTimeout(Promise.race)`：launch 60s / reLaunch 20s / close 8s。
+3. **e2e 断言两次写错（都是断言自身问题）**：
+   - 正则窗口 `[\s\S]{0,240}` 不够宽，跨不到 `justify-content` → 改为单规则块内断言
+   - 「不加我的方案」「不实现版本条」匹配到了源码注释 → 改为只扫 `<template>` 区
+   **原则：断言作用在实现产物上，不作用在解释实现的注释上。**（MP-05D 踩过同类坑）
+
+### 验证
+- `npx vitest run` → **477 passed / 33 files**（基线 459/32，+18）
+- `type-check` 0 / `build` 0 err
+- e2e 静态 → **62 PASS / 0 FAIL**，3.7s 退出（不再挂死）
+- token 合规：hex=0 / 裸间距=0 / 裸行高=0
+
+### 遗留
+1. 动态 e2e 待 DevTools 服务端口 9420（`cli auto` 只起 IDE server 64343，9420 需 GUI 手开）
+2. 客服 `CUSTOMER_SERVICE` 仍是 placeholder，点击走 toast 兜底；需运营开通后回填
+3. Q2 已知缺口：「我的」页无「我的方案」入口（照稿，优化阶段补）
+
+### 小程序端全部页面完成 ✅
+首页 / 产品分类 / 产品列表 / 产品详情 / 选品 / 方案编辑 / 方案列表 / 预览分享 / 我的。
+剩余：**BE-09**（Admin 数据与系统管理）唯一 pending。
+
+---
+
 ## 2026-11-15 MP-05D 预览分享页完成 —— MP-05 方案链路闭环（Hermes 实现）
 
 ### 交付

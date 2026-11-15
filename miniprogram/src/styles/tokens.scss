@@ -120,6 +120,7 @@ $space-16: 16px;
 $space-18: 18px; // 分类列表系列横幅 p18
 $space-20: 20px; // 首页正文板块间距、操作组 gap20
 $space-24: 24px;
+$space-26: 26px; // 「我的」品牌卡上内边距（spec §5.10 pt26）
 $space-28: 28px; // 底部 Tab 左右内边距（design-tokens.md 布局级）
 $space-32: 32px;
 $space-34: 34px; // 产品页排序项间距（spec §5.3 gap34）
@@ -254,6 +255,7 @@ $version-bar-height: 24px; // Q12 版本标识条：仅登记，不实现
   --space-18: 18px;
   --space-20: 20px;
   --space-24: 24px;
+  --space-26: 26px;
   --space-28: 28px;
   --space-32: 32px;
   --space-34: 34px;

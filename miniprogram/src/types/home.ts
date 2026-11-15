@@ -45,3 +45,12 @@ export interface WxArticlePage {
   page: number;
   size: number;
 }
+
+/** GET /wxapi/brand 品牌配置（单行，对齐 backend WxBrandOut）。 */
+export interface WxBrandInfo {
+  id: number;
+  intro: string | null;
+  join_phone: string | null;
+  service_promise: string[] | null;
+  store_images: string[] | null;
+}
