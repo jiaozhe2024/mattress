@@ -208,7 +208,7 @@
       "id": "MP-05B",
       "title": "方案编辑页（V3 还原：空态与填充态同构）",
       "description": "【MP-05A 后派】新建 `pages/scheme/edit.vue`，依据 `references/plan-01-empty.png` + `plan-03-edit.png` + `spec.md §5.5 与 §5.7`（两个画板为同构的空态与填充态）。①导航 WechatNav 二级页，标题 `LEKASI 乐卡思`。②方案编辑内容 p20 gap20：方案标题输入 h48 border-b 1px #e9ecf2 —— 空态占位 `方案标题` Regular 14 text3 行高 1.45、填充态 Regular 14 text1；右侧 pencil 16×16（点击聚焦输入，键盘态未设计 Q8）。③已选产品 gap9：**空态**添加产品卡 112×126 bg #f4f6fa 圆角 8 gap8 居中（plus 26×26 + `添加产品` Regular 11 text3）；**填充态**已选缩略图 105×126 bg cream 圆角 8（产品图 105×90 object-cover、产品名 Regular 10 navy 居中、移除按钮 20×20 bg navy left85 top0 文字 `×` Inter Regular 15 textInv）+ 添加产品卡 105×126。点添加产品卡 → 选品页 MP-05A。④详情展开提示 pt14 gap5 居中：`产品数量：N` Regular 12 text3 行高 1.45、分隔线 1px #e9ecf2、`详细说明` Regular 12 text3、chevron-down 24×24（点击展开备注 textarea；展开态未设计 Q8，给最小可用样式并注明）。⑤**底部操作条** bg navy p14 gap8：`我的方案` 108×42 圆角 20 bg textInv border 1px #8890b8 文字 Medium 14 text2 行高 20、`保存` 92×42 圆角 20 bg yellow 文字 Medium 15 navy 行高 22、`预览分享` 119×42 圆角 20 bg yellow 同上。**Q3 决议：三按钮做成可配 variant（props 或常量控制主次），本轮照稿等权重，优化阶段只改配置不改结构**。⑥交互：标题必填 1-100 字（空标题保存拦截）；移除缩略图；`保存` → POST/PUT `/wxapi/schemes`（currentSchemeId 存在走 PUT）→ 成功返回方案列表；`预览分享` 先保存再跳 `/pages/scheme/preview?id=`；`我的方案` → 方案列表页 MP-05C。⑦**不实现版本标识条**。⑧交付 vitest + `scripts/e2e/scheme-edit.auto.js`。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "MP-07, MP-05A",
       "verify": "`npm run build:mp-weixin` 0 error；e2e 断言：空态显示 112×126 添加产品卡与 `产品数量：0`、填充态显示 105×126 缩略图与 `产品数量：N`、三按钮宽度 108/92/119、空标题点保存被拦截、输入标题保存后跳方案列表、点预览分享后跳预览页；截图分别与 `plan-01-empty.png` / `plan-03-edit.png` 比对；无版本标识条",
