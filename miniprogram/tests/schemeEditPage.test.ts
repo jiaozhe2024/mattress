@@ -4,14 +4,25 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import type { Product } from "@/types/product";
 
+const hoisted = vi.hoisted(() => ({ loadOptions: {} as Record<string, unknown> }));
+
+// uni-app 的 onLoad 在 jsdom 下依赖小程序运行时钩子（vue.injectHook），必须 mock。
+// loadOptions 可注入 ?id= 以覆盖「从方案列表点进来载入已有方案」的分支。
+vi.mock("@dcloudio/uni-app", () => ({
+  onLoad: (callback: (options: Record<string, unknown>) => void) => {
+    callback(hoisted.loadOptions);
+  },
+}));
+
 vi.mock("@/api/scheme", () => ({
   createScheme: vi.fn(),
   updateScheme: vi.fn(),
   getSchemeDetail: vi.fn(),
   getSchemes: vi.fn(),
+  deleteScheme: vi.fn(),
 }));
 
-import { createScheme, updateScheme } from "@/api/scheme";
+import { createScheme, getSchemeDetail, updateScheme } from "@/api/scheme";
 import EditPage from "@/pages/scheme/edit.vue";
 import {
   SCHEME_LIST_PAGE,
@@ -22,6 +33,7 @@ import { useSelectionStore } from "@/stores/useSelectionStore";
 
 const mockCreate = createScheme as unknown as ReturnType<typeof vi.fn>;
 const mockUpdate = updateScheme as unknown as ReturnType<typeof vi.fn>;
+const mockGetDetail = getSchemeDetail as unknown as ReturnType<typeof vi.fn>;
 
 function makeProduct(id: number, name: string): Product {
   return { id, name, model: `M-${id}`, main_image: `/uploads/p${id}.png` };
@@ -348,5 +360,118 @@ describe("方案编辑页 · 交互", () => {
     expect(uni().showToast).toHaveBeenCalledWith(
       expect.objectContaining({ title: "方案列表建设中" })
     );
+  });
+});
+
+describe("从方案列表进入：按 ?id= 载入已有方案（MP-05C 入口）", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    hoisted.loadOptions = {};
+    mockGetDetail.mockReset();
+    mockCreate.mockReset();
+    mockUpdate.mockReset();
+    (globalThis as Record<string, unknown>).uni = uniStub();
+  });
+
+  it("无 id 参数时不请求详情（新建流程）", async () => {
+    hoisted.loadOptions = {};
+    await mountPage();
+    expect(mockGetDetail).not.toHaveBeenCalled();
+  });
+
+  it("有 id 时拉详情并用快照还原选品与标题", async () => {
+    hoisted.loadOptions = { id: "7" };
+    mockGetDetail.mockResolvedValue({
+      id: 7,
+      title: "主卧舒适好眠方案",
+      remark: "客户偏好偏硬",
+      product_count: 2,
+      share_count: 0,
+      create_time: "2026-11-15T14:14:06",
+      products: [
+        {
+          id: 11,
+          product_id: 1,
+          sort: 0,
+          snapshot: {
+            id: 1,
+            name: "3D床垫",
+            model: "LEKASI-3D-180",
+            spec: "1800 × 2000 mm",
+            sleep_feel: "舒适睡感",
+            slogan: "六大专属，分龄深睡",
+            main_image: "/uploads/demo/product-3d-main.jpg",
+            detail_images: ["/uploads/x.jpg"],
+            real_images: [],
+            detail_content: "<h3>x</h3>",
+            category_id: 1,
+            category_name: "6S专属床垫",
+          },
+        },
+        {
+          id: 12,
+          product_id: 2,
+          sort: 1,
+          snapshot: { id: 2, name: "幸福3号", model: "LEKASI-XF3-180",
+                    main_image: "/uploads/demo/product-xf3-main.jpg" },
+        },
+      ],
+    });
+
+    const wrapper = await mountPage();
+    await flushPromises();
+
+    expect(mockGetDetail).toHaveBeenCalledWith(7);
+    const store = useSelectionStore();
+    expect(store.selectedProducts.map((p) => p.name)).toEqual(["3D床垫", "幸福3号"]);
+    expect(store.currentSchemeId).toBe(7);
+    // 快照里的富展示字段不进选品 store（Product 契约外）
+    expect((store.selectedProducts[0] as Record<string, unknown>).detail_content)
+      .toBeUndefined();
+    // 标题与备注回填
+    const titleInput = wrapper.find(".se-title-input");
+    expect(titleInput.element.value).toBe("主卧舒适好眠方案");
+  });
+
+  it("载入失败时 toast 提示且不污染 store", async () => {
+    hoisted.loadOptions = { id: "99" };
+    mockGetDetail.mockRejectedValue(new Error("404"));
+    const store = useSelectionStore();
+    store.clearSelection();
+
+    await mountPage();
+    await flushPromises();
+
+    expect(mockGetDetail).toHaveBeenCalledWith(99);
+    expect(store.selectedProducts).toEqual([]);
+    expect(store.currentSchemeId).toBeNull();
+  });
+
+  it("id 非法（非数字/负数/0）不请求详情", async () => {
+    for (const bad of ["abc", "-1", "0", ""]) {
+      hoisted.loadOptions = { id: bad };
+      mockGetDetail.mockReset();
+      await mountPage();
+      expect(mockGetDetail).not.toHaveBeenCalled();
+    }
+  });
+
+  it("载入后保存走 PUT（currentSchemeId 已置）", async () => {
+    hoisted.loadOptions = { id: "7" };
+    mockGetDetail.mockResolvedValue({
+      id: 7, title: "旧标题", remark: null, product_count: 1, share_count: 0,
+      create_time: null,
+      products: [{ id: 1, product_id: 1, sort: 0,
+        snapshot: { id: 1, name: "3D床垫", model: "M1", main_image: "/a.png" } }],
+    });
+    mockUpdate.mockResolvedValue({ id: 7 });
+
+    const wrapper = await mountPage();
+    await flushPromises();
+    await wrapper.find(".se-action--primary").trigger("tap");
+    await flushPromises();
+
+    expect(mockUpdate).toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 });

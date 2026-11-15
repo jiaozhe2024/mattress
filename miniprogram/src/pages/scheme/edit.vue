@@ -9,6 +9,7 @@
  *       详情展开提示 → 底部操作条（Q3：一份可配 variant 配置驱动）→ 安全区。
  * 选品状态全程走 useSelectionStore（核心约定 9，禁止 storage/全局变量）。
  */
+import { onLoad } from "@dcloudio/uni-app";
 import { computed, nextTick, ref } from "vue";
 import {
   ADD_PRODUCT_LABEL,
@@ -27,7 +28,7 @@ import {
   validateSchemeTitle,
   type SchemeActionButtonConfig,
 } from "@/components/scheme/schemeEditModel";
-import { createScheme, updateScheme } from "@/api/scheme";
+import { createScheme, getSchemeDetail, updateScheme } from "@/api/scheme";
 import SafeArea from "@/components/frame/SafeArea.vue";
 import WechatNav from "@/components/frame/WechatNav.vue";
 import Icon from "@/components/icons/Icon.vue";
@@ -103,6 +104,56 @@ function onRemoveProduct(productId: number): void {
 function toggleDetail(): void {
   detailOpen.value = !detailOpen.value;
 }
+
+/**
+ * 从方案详情快照还原选品 store 的 Product（核心约定 10：展示一律读快照）。
+ *
+ * 只映射 Product 契约内的字段；快照里的 detail_images/real_images/detail_content
+ * 等富展示字段不进选品 store（本页只用到主图与名称）。缺省字段给安全默认值，
+ * 避免脏数据导致渲染崩。
+ */
+function productFromSnapshot(snapshot: Record<string, unknown>): Product {
+  const text = (key: string): string =>
+    typeof snapshot[key] === "string" ? (snapshot[key] as string) : "";
+
+  return {
+    id: typeof snapshot.id === "number" ? snapshot.id : 0,
+    name: text("name"),
+    model: text("model"),
+    main_image: text("main_image"),
+    spec: text("spec"),
+    sleep_feel: text("sleep_feel"),
+    slogan: text("slogan"),
+  };
+}
+
+/**
+ * 从方案列表点进来时按 ?id= 载入已有方案（MP-05C 的入口）。
+ *
+ * 不能只依赖 Pinia 里的选品：从列表进入时 Pinia 可能是空的，必须按 id 拉详情，
+ * 用快照还原选品 + 标题 + 备注，并把 currentSchemeId 设为该方案（保存时走 PUT）。
+ */
+onLoad((options) => {
+  const rawId = options?.id;
+  const id = rawId === undefined ? Number.NaN : Number(rawId);
+  if (!Number.isFinite(id) || id <= 0) return;
+
+  void (async (): Promise<void> => {
+    try {
+      const detail = await getSchemeDetail(id);
+      title.value = detail.title;
+      remark.value = detail.remark ?? "";
+      selectionStore.$patch({
+        selectedProducts: detail.products.map((row) =>
+          productFromSnapshot(row.snapshot)
+        ),
+        currentSchemeId: detail.id,
+      });
+    } catch {
+      uni.showToast({ title: "方案加载失败", icon: "none" });
+    }
+  })();
+});
 
 /**
  * 保存（POST 新建 / PUT 更新）。
