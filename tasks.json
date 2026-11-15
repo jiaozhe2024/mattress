@@ -218,7 +218,7 @@
       "id": "MP-05C",
       "title": "方案列表页（V3 还原：卡片列表 + 长按删除）",
       "description": "【MP-05B 后派】新建 `pages/scheme/list.vue`，依据 `references/plan-04-list.png` + `spec.md §5.8`，数据接 `GET /wxapi/schemes`。①导航 WechatNav 二级页，标题 `方案列表`。②内容 bg #f4f6fa p16 gap12 min-h 722：方案卡片白底圆角 8 p12 gap12 居中 —— 方案封面 88×96 圆角 6 object-cover、方案信息自适应宽 gap7 行高 1.45（主标题 Medium 15 navy、副行1 Regular 12 text2 `标题：{title}`、副行2 Regular 11 text3 `产品数量：{n} / 日期：{YYYY.MM.DD}`，**日期动态格式化，禁止硬编码** Q9）、右侧 chevron-right 16×16。底部提示居中 `＊ 提示：长按方案删除 ＊` Regular 11 text3 行高 1.45。③交互：点卡片 → 方案编辑页（载入该方案）；长按 → 删除确认（确认弹窗未设计 Q8，用 uni.showModal）→ DELETE `/wxapi/schemes/{id}` → 刷新列表；空态保留空白区域不做插图（Q8 DEFERRED）。④底部仅 SafeArea，**无固定操作条、无 TabBar**。⑤**不实现版本标识条**。⑥交付 vitest（日期格式化纯函数必测）+ `scripts/e2e/scheme-list.auto.js`。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "MP-07, MP-05B",
       "verify": "`npm run build:mp-weixin` 0 error；日期格式化 vitest 通过（YYYY.MM.DD，个位数补零）；e2e 断言：方案卡封面 88×96、主标题与两个副行渲染、底部提示文案存在、点卡片跳编辑页、长按弹确认框、确认后卡片消失；页面无固定底部操作条、无 TabBar；截图与 `plan-04-list.png` 比对；无版本标识条",
@@ -253,6 +253,16 @@
       "blocked_by": "",
       "verify": "keyword=9B/9D/9P 各命中 1 条；curl products?size=50 total=11 且分类分布正确；pytest 138 passed exit 0；seed 幂等逻辑不变",
       "requires_eval": true
+    },
+    {
+      "id": "MP-05B2",
+      "title": "编辑页按 ?id= 载入已有方案（MP-05C 功能断点补齐）",
+      "description": "MP-05C 验收时发现：列表页点卡片跳 edit?id=x，但 edit.vue 无 onLoad，参数被忽略，用户看到空白新建页。补 onLoad：解析 id（非法值跳过）→ getSchemeDetail → 用 product_snapshot 还原选品（核心约定 10 读快照）→ 回填标题/备注 → currentSchemeId 置为该方案（保存走 PUT）。productFromSnapshot 只映射 Product 契约内字段。载入失败 toast 且不污染 store。同时补 uni-app onLoad 的测试 mock（jsdom 下 vue.injectHook 不存在会让整个测试文件挂掉）。",
+      "status": "done",
+      "priority": "high",
+      "blocked_by": "",
+      "verify": "vitest 445 passed（含新增 5 项：无 id 不请求/有 id 还原选品与标题/载入失败不污染 store/id 非法不请求/载入后保存走 PUT）；type-check 0；build 0 err",
+      "requires_eval": false
     }
   ]
 }

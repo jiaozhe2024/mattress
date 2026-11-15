@@ -4,6 +4,60 @@
 
 ---
 
+## 2026-11-15 MP-05C 方案列表页 + MP-05B2 编辑页载入已有方案（Hermes 直接实现）
+
+### 为什么没派 CC
+派 MP-05C 时 CC 报 `API Error: 402 账户余额不足`。核查：
+- 网关本身健康（8 token 探针 200、200 token 中请求 200）
+- 失败会话的 jsonl 累积到 **557KB / 134 轮**（反复读 `edit.vue` 等大文件），单次请求
+  规模过大触发网关额度限制
+- 当前 shell 里残留 Hermes 旧网关变量（1.95.142.151），但探针显示它是 503 不是 402，
+  说明 402 来自 CC 自己的大请求
+
+为避免再消耗一轮大上下文，MP-05C 由 Hermes 按同规格直接实现。
+
+### MP-05C 交付
+| 文件 | 内容 |
+|---|---|
+| `pages/scheme/list.vue` | 卡片列表（封面 88×96 圆角6 / 主标题 Medium15 / 副行 12+11 / chevron16 / 底部提示）+ 三态 + 点卡片跳编辑 + 长按系统确认删除；仅 SafeArea，无操作条无 TabBar |
+| `schemeListModel.ts` | **`formatSchemeDate`（Q9 纯函数）** + `titleLineOf`/`metaLineOf`/`schemeCardViewsOf` |
+| `api/scheme.ts` | 补 `deleteScheme` |
+| 单测 | 18 项（日期 8 / 副行 4 / 卡片视图 6） |
+| e2e | 双段 + TCP 端口预检，静态 **27 项全过** |
+
+**Q9 落实**：日期从 `create_time` 动态格式化 YYYY.MM.DD，兼容 ISO/斜杠/带时区/非法输入，
+代码中无硬编码 `2026.11.04`（有防回归断言）。
+
+### MP-05B2 补齐功能断点
+验收 MP-05C 时发现真实断点：**列表点卡片跳 `edit?id=x`，但 edit.vue 没有 onLoad，
+参数被忽略 → 用户看到空白新建页**。
+
+补齐：
+- `onLoad` 解析 id（非数字/0/负数/空 跳过）
+- `getSchemeDetail` → 用 `product_snapshot` 还原选品（核心约定 10 读快照）
+- 回填标题/备注，`currentSchemeId` 置为该方案（保存走 PUT）
+- 载入失败 toast 且不污染 store
+- 补 5 项单测 + `uni-app onLoad` 的 mock（jsdom 下 `vue.injectHook` 不存在，
+  会让整个测试文件 22 项全挂——这是踩到的真坑）
+
+### 独立验证
+- `npx vitest run` → **445 passed / 32 files**
+- `npm run type-check` → exit 0
+- `npm run build:mp-weixin` → DONE 0 err
+- e2e 静态段 → 27 PASS / 0 FAIL
+- token 合规：hex=0 / 裸间距=0 / 裸行高=0
+
+### 提交
+`b3004fb`（MP-05C）、`3a980c6`（MP-05B2）
+
+### 遗留
+1. 动态 e2e 全部待 DevTools 服务端口（9420）
+2. 方案列表分页：当前一次拉 50 条，超出需补触底加载（spec 未要求）
+3. **CC 派活的 token 成本问题**：单个 CC 会话读多个大文件会让上下文暴涨，
+   接近网关限额边界。后续大任务可考虑拆更细，或让 CC 少读整文件（grep 定位）。
+
+---
+
 ## 2026-11-15 MP-04 产品详情页 验收通过（CC 顺利完成 + Hermes 修两处真缺陷）
 
 CC 会话 `proc_57a4c7b76b2d`，**首次未挂死**（前两次 MP-03A/03B 均在收尾卡死）——
