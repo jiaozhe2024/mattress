@@ -68,6 +68,38 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // BE-09 数据管理目录：meta.rbacPath 与后端 init_data_menus 种子对齐
+    // （catalog path='/data'，子菜单为相对片段，归一化后 /data/<path>）
+    path: '/data',
+    component: Layout,
+    redirect: '/data/wx-user',
+    meta: { title: '数据管理', icon: 'DataLine', rbacPath: '/data' },
+    children: [
+      {
+        path: 'wx-user',
+        name: 'DataWxUser',
+        component: () => import('@/views/data/wx-user/index.vue'),
+        meta: { title: '小程序用户', icon: 'User', rbacPath: '/data/wx-user' },
+      },
+      {
+        path: 'scheme',
+        name: 'DataScheme',
+        component: () => import('@/views/data/scheme/index.vue'),
+        meta: { title: '方案数据', icon: 'FolderOpened', rbacPath: '/data/scheme' },
+      },
+      {
+        path: 'preset-role',
+        name: 'DataPresetRole',
+        component: () => import('@/views/data/preset-role/index.vue'),
+        meta: {
+          title: '预置角色',
+          icon: 'Setting',
+          rbacPath: '/data/preset-role',
+        },
+      },
+    ],
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/error/404.vue'),

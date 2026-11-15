@@ -250,6 +250,115 @@ CONTENT_CHILD_MENUS: list[dict] = [
 ]
 
 
+BE09_CHILD_MENUS: list[dict] = [
+    {
+        "name": "小程序用户",
+        "path": "wx-user",
+        "order": 1,
+        "icon": "material-symbols:person-outline-rounded",
+        "component": "/data/wx-user",
+    },
+    {
+        "name": "方案数据",
+        "path": "scheme",
+        "order": 2,
+        "icon": "material-symbols:folder-managed-outline",
+        "component": "/data/scheme",
+    },
+    {
+        "name": "预置角色",
+        "path": "preset-role",
+        "order": 3,
+        "icon": "material-symbols:admin-panel-settings-outline",
+        "component": "/data/preset-role",
+    },
+]
+
+
+async def _ensure_menu_catalog(
+    *,
+    catalog_path: str,
+    catalog_name: str,
+    catalog_order: int,
+    catalog_icon: str,
+    catalog_redirect: str,
+    children: list[dict],
+) -> list[Menu]:
+    """幂等补齐「目录 + 子菜单」，并把新增项增量绑定到「管理员」角色。
+
+    为什么需要独立函数：init_menus 在已有库会整体跳过，
+    BE-08/BE-09 的新菜单必须能单独补进老库，否则升级后菜单不出现。
+    """
+    async with db_session() as session:
+        catalog = await session.scalar(
+            select(Menu).where(Menu.path == catalog_path)
+        )
+        if catalog is None:
+            catalog = Menu(
+                menu_type=MenuType.CATALOG,
+                name=catalog_name,
+                path=catalog_path,
+                order=catalog_order,
+                parent_id=0,
+                icon=catalog_icon,
+                is_hidden=False,
+                component="Layout",
+                keepalive=False,
+                redirect=catalog_redirect,
+            )
+            session.add(catalog)
+            await session.flush()
+
+        all_menus: list[Menu] = [catalog]
+        for item in children:
+            child = await session.scalar(
+                select(Menu).where(
+                    Menu.path == item["path"], Menu.parent_id == catalog.id
+                )
+            )
+            if child is None:
+                child = Menu(
+                    menu_type=MenuType.MENU,
+                    parent_id=catalog.id,
+                    is_hidden=False,
+                    keepalive=False,
+                    **item,
+                )
+                session.add(child)
+                await session.flush()
+            all_menus.append(child)
+
+        # 增量绑定「管理员」角色（首装库由 init_roles 全量绑定，这里覆盖升级路径）
+        admin_role = await session.scalar(select(Role).where(Role.name == "管理员"))
+        if admin_role is not None:
+            bound_ids = set(
+                (
+                    await session.scalars(
+                        select(RoleMenu.menu_id).where(
+                            RoleMenu.role_id == admin_role.id
+                        )
+                    )
+                ).all()
+            )
+            for menu in all_menus:
+                if menu.id not in bound_ids:
+                    session.add(RoleMenu(role_id=admin_role.id, menu_id=menu.id))
+        return all_menus
+
+
+async def init_data_menus():
+    """BE-09：数据管理菜单幂等补齐（小程序用户 / 方案数据 / 预置角色）。"""
+    menus = await _ensure_menu_catalog(
+        catalog_path="/data",
+        catalog_name="数据管理",
+        catalog_order=4,
+        catalog_icon="carbon:data-base",
+        catalog_redirect="/data/wx-user",
+        children=BE09_CHILD_MENUS,
+    )
+    logger.info(f"✅ 数据管理菜单就绪 - /data + {len(menus) - 1} 个子菜单")
+
+
 async def init_content_menus():
     """BE-08：内容管理菜单幂等补齐（init_menus 在已有库会整体跳过，须独立按 path 检查）。
 
@@ -382,6 +491,55 @@ async def init_roles():
     logger.info("✅ 用户角色初始化成功 - 角色: 管理员, 普通用户")
 
 
+async def init_preset_roles():
+    """BE-09：三个业务预置角色幂等落库，并按职责绑定菜单。
+
+    超级管理员不建 role 行 —— 基座用 User.is_superuser 表达，全放行。
+    内容管理员绑 /content 目录（含子菜单）；运营人员绑 /data 目录。
+    """
+    async with db_session() as session:
+        content_catalog = await session.scalar(
+            select(Menu).where(Menu.path == "/content")
+        )
+        data_catalog = await session.scalar(select(Menu).where(Menu.path == "/data"))
+
+        plan = [
+            ("内容管理员", "维护轮播/分类/产品/资讯/品牌等小程序展示内容", content_catalog),
+            ("运营人员", "查看用户与方案数据、处理反馈；不改系统配置", data_catalog),
+        ]
+        created = 0
+        for name, desc, catalog in plan:
+            role = await session.scalar(select(Role).where(Role.name == name))
+            if role is None:
+                role = Role(name=name, desc=desc)
+                session.add(role)
+                await session.flush()
+                created += 1
+            if catalog is None:
+                continue
+            # 该目录及其全部子菜单一次性绑定
+            menu_ids = list(
+                (
+                    await session.scalars(
+                        select(Menu.id).where(
+                            (Menu.id == catalog.id) | (Menu.parent_id == catalog.id)
+                        )
+                    )
+                ).all()
+            )
+            bound = set(
+                (
+                    await session.scalars(
+                        select(RoleMenu.menu_id).where(RoleMenu.role_id == role.id)
+                    )
+                ).all()
+            )
+            for menu_id in menu_ids:
+                if menu_id not in bound:
+                    session.add(RoleMenu(role_id=role.id, menu_id=menu_id))
+    logger.info(f"✅ 预置角色就绪（新建 {created} 个，其余已存在）")
+
+
 async def init_data():
     logger.info("🚀 系统初始化开始...")
 
@@ -393,9 +551,13 @@ async def init_data():
     await init_superuser()
     await init_menus()
     await init_content_menus()
+    await init_data_menus()
     await init_apis()
     logger.info("✅ 基础数据初始化完成")
 
     await init_roles()
+    # 必须在 init_roles 之后：init_roles 首装时会全量绑定「管理员」，
+    # 预置角色依赖 menu 已存在（init_data_menus 已保证）。
+    await init_preset_roles()
 
     logger.info("🎉 系统初始化完成！")

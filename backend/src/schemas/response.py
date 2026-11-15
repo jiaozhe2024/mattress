@@ -228,8 +228,10 @@ class AuditLogItem(BaseModel):
     path: str = Field(description="请求路径")
     status: int = Field(description="响应状态码")
     response_time: float = Field(description="响应时间（毫秒）")
-    ip: str | None = Field(description="IP地址")
-    created_at: datetime | None = Field(description="创建时间")
+    # AuditLog 模型没有 ip 列（中间件也从未采集），这里必须给默认值：
+    # 原写法 `ip: str | None` 无默认 → Pydantic 视为必填 → /auditlog/list 恒 500。
+    ip: str | None = Field(default=None, description="IP地址（当前未采集，恒为 null）")
+    created_at: datetime | None = Field(default=None, description="创建时间")
 
 
 # 递归模型更新

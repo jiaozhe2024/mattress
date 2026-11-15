@@ -21,6 +21,54 @@ from models.admin import AuditLog, User
 from .bgtask import BgTasks
 
 
+def _match_route(
+    routes: Any,
+    path: str,
+    method: str,
+    prefix: str = "",
+    tags: tuple[str, ...] = (),
+) -> tuple[APIRoute, tuple[str, ...]] | None:
+    """在路由树中递归查找匹配的 APIRoute，返回 (route, 累积 tags)。
+
+    为什么要递归 + 累积前缀和 tags：FastAPI 0.12x+ 的 include_router 会把子路由
+    包进 _IncludedRouter，其 original_router.routes 里的 APIRoute 只有**相对路径**
+    （'' 或 '/{id}'）、tags 也往往是空的，真实 prefix/tags 记在
+    include_context.prefix / include_context.tags 上。直接用顶层 route.path_regex
+    匹配完整 URL、直接读 route.tags，都会得到空值 —— 这正是审计日志 module
+    一直是空、「按模块筛选」全部失效的根因。
+    """
+    for route in routes or []:
+        if isinstance(route, APIRoute):
+            full = prefix + route.path
+            if not re.fullmatch(_path_to_regex(full), path):
+                continue
+            if method not in (route.methods or ()):
+                continue
+            merged = tags + tuple(str(t) for t in (route.tags or ()))
+            return route, merged
+        ctx = getattr(route, "include_context", None)
+        sub_prefix = prefix + (getattr(ctx, "prefix", "") or "")
+        sub_tags = tags + tuple(str(t) for t in (getattr(ctx, "tags", None) or ()))
+        candidates = [
+            getattr(route, "routes", None),
+            getattr(getattr(route, "original_router", None), "routes", None),
+            getattr(getattr(route, "app", None), "routes", None),
+        ]
+        for candidate in candidates:
+            if not candidate:
+                continue
+            found = _match_route(candidate, path, method, sub_prefix, sub_tags)
+            if found is not None:
+                return found
+    return None
+
+
+def _path_to_regex(template: str) -> str:
+    """把 '/a/{id}/b' 转成可匹配实际路径的正则（参数段匹配非斜杠串）。"""
+    pattern = re.sub(r"\{[^/}]+\}", "[^/]+", template)
+    return pattern.rstrip("/") or "/"
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """安全头中间件"""
 
@@ -221,16 +269,15 @@ class HttpAuditLogMiddleware(BaseHTTPMiddleware):
             "status": response.status_code,
             "method": request.method,
         }
-        # 路由信息
-        app: FastAPI = request.app
-        for route in app.routes:
-            if (
-                isinstance(route, APIRoute)
-                and route.path_regex.match(request.url.path)
-                and request.method in route.methods
-            ):
-                data["module"] = ",".join(route.tags)
-                data["summary"] = route.summary
+        # 路由信息（module=tags / summary）
+        # 必须递归：FastAPI 0.12x 起 include_router 会把子路由包进 _IncludedRouter，
+        # 顶层 app.routes 只看到包装器，直接遍历会拿不到 tags → 审计日志 module 空，
+        # 「按模块筛选」全部失效。
+        matched = _match_route(request.app.routes, request.url.path, request.method)
+        if matched is not None:
+            route, merged_tags = matched
+            data["module"] = ",".join(merged_tags)
+            data["summary"] = route.summary
         # 获取用户信息
         try:
             user_obj = None

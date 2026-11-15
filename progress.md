@@ -4,6 +4,45 @@
 
 ---
 
+## 2026-11-15 BE-09 Admin 数据与系统管理完成 —— 开发任务全部收尾（Hermes 实现）
+
+### 交付
+| 层 | 内容 |
+|---|---|
+| 后端 | `schemas/repositories/services/api` 四层新增 admin_system + 3 路由模块 |
+| 种子 | `init_data_menus`（/data + 3 子菜单）+ `init_preset_roles`（内容管理员/运营人员） |
+| 前端 | `views/data/{wx-user,scheme,preset-role}` 三页 + `types/api/system.ts` + 路由 |
+| 测试 | 25 项 |
+
+### 顺手修掉两个既有 Bug（都不在 BE-09 范围内，但阻塞审计日志验收）
+1. **审计日志 `module` 恒为空** → 「按模块筛选」完全失效。
+   `HttpAuditLogMiddleware` 直接遍历 `app.routes` 取 `route.tags`，但 FastAPI 0.12+
+   把子路由包进 `_IncludedRouter`：顶层拿不到 APIRoute，即便拿到
+   `original_router.routes`，其 `path` 仍是相对路径、`tags` 是空列表——
+   真实 prefix/tags 记在 `include_context` 上。新增 `_match_route` 递归累积两者。
+2. **`/auditlog/list` 恒 500**：`AuditLogItem.ip: str | None` 无默认值 → Pydantic
+   视为必填，而 AuditLog 表根本没有 ip 列。补 `default=None`。
+
+### 关键实测（真实 HTTP，非单测）
+- 禁用用户 → `{"code":403,"msg":"用户已被禁用"}`；启用 → 200 ✅
+- admin 删除方案 → public `200`→`404`；管理员详情仍可见 `deleted_at` ✅
+- 快照只读：2 条产品快照 `3D床垫/六大专属，分龄深睡`、`幸福2号/暖姜纤维，古法温养` ✅
+- 预置角色：`content_admin`→/content+5 子菜单，`operator`→/data+3 子菜单 ✅
+- 审计日志 `module=管理端-小程序用户` → total=3 全命中 ✅
+- 后端 pytest **163 passed / 1 skipped**（基线 138，+25）
+- 前端 `npm run build` 0 error
+
+### 遗留
+1. `AuditLog` 无 ip 列，接口返回 `ip: null`
+2. 预置角色页只读；授权仍在基座 /system/role、/system/menu
+3. `operator` 只绑菜单未绑 API —— 需在角色管理页手工分配（菜单可见 ≠ 接口可调）
+
+### 任务完成度
+done 22 / cancelled 3 / **pending 0** / blocked 1（BE-07 海报，已决定推迟）。
+除 BE-07 外全部完成。
+
+---
+
 ## 2026-11-15 MP-06 我的页完成 —— 小程序端全部页面收尾（Hermes 实现）
 
 ### 交付
