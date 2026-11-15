@@ -76,6 +76,13 @@
         "navigationStyle": "custom",
         "navigationBarTitleText": "全局层校验"
       }
+    },
+    {
+      "path": "pages/scheme/list",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "方案列表"
+      }
     }
   ],
   "tabBar": {

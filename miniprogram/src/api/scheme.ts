@@ -1,4 +1,4 @@
-import { get, post, put } from "@/utils/request";
+import { del, get, post, put } from "@/utils/request";
 
 /** 方案保存入参（对齐 backend/src/schemas/wx_scheme.py SchemeCreateIn/SchemeUpdateIn）。 */
 export interface SchemeSaveInput {
@@ -75,4 +75,9 @@ export function getSchemes(
     { page, size },
     { silent: true }
   );
+}
+
+/** 删除方案（软删除，仅创建者）。 */
+export function deleteScheme(id: number): Promise<null> {
+  return del<null>(`/wxapi/schemes/${id}`, { silent: true });
 }
