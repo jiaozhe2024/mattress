@@ -178,7 +178,7 @@
       "id": "MP-04",
       "title": "产品详情页（V3 还原：海报区 + 分页点 + 操作组 + 详情/实拍图切换）",
       "description": "【MP-03B 后派】新建 `pages/product/detail.vue`，依据 `references/product-detail.png` + `spec.md §5.4`，数据接 `GET /wxapi/products/{id}`。①导航 WechatNav 二级页，标题 `LEKASI 乐卡思`。②**产品介绍海报** bg cream 圆角 8：产品标题 p16 gap6 —— `LEKASI 乐卡思`（Inter Bold 10 navy 字距 1）、产品名（Bold 23 navy）、副标（Regular 11 text2 行高 1.45）；床垫产品图 h190 object-cover；产品信息条 bg yellowBg px16 py12 gap6 —— feature 行（Medium 11 text1 行高 1.45）、规格行 `规格：{spec} · 实际配置以产品说明为准`（Regular 10 text2 行高 1.45）。③图片分页 h20 居中 gap5：当前页 6×6 圆点 bg navy，其他 bg line（数量随 detail_images，1 张时隐藏）。④**产品基本信息** p16 gap6：产品名 Bold 19 text1 行高 1.45、`型号：{model}` Regular 13 text3 行高 1.45；操作组 pt12 gap20 右对齐 —— `分享`（icon/share 24×24 + 文字 Regular 11 text2 纵向 gap4）、`小程序码`（qr-code 24×24 + 同上）、`选款`（圆形 52×52 圆角 26 bg #f7c400 shadow/fab，文字 Medium 13 navy 行高 19，下方再一个 `选款` 文字标签）。⑤区域分隔 h10 bg #f4f6fa。⑥产品详情 p16 gap20：详情标签 gap10 —— `产品详情` 34 高圆角 6 bg navy 文字 Regular 13 textInv px14（选中）、`实拍图` 34 高圆角 6 bg #f4f6fa 文字 Regular 13 text2 px14（未选）；细节图 h180 object-cover；产品说明 gap10 行高 1.45 —— 小标题 Bold 18 navy、正文 Regular 13 text2、免责 Regular 12 text3。富文本用 rich-text 渲染 detail_content。⑦交互：Tab 切换详情/实拍图；分享走 onShareAppMessage；小程序码弹层；圆形选款 → useSelectionStore.addProduct + toast。**Q13 热区先行**：分享 / 小程序码整体热区 ≥44×44（透明 padding 扩大，视觉不变）。⑧底部 TabBar two。⑨**不实现版本标识条**，不做转场动画。⑩交付 vitest + `scripts/e2e/product-detail.auto.js`。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "MP-07, BE-10",
       "verify": "`npm run build:mp-weixin` 0 error；e2e 断言：产品名/型号/规格/睡感渲染齐、图片分页点数正确、详情/实拍图 Tab 可切换、圆形选款按钮 52×52 且点击后 store 数量 +1 并 toast、分享/小程序码热区 ≥44×44；截图与 `references/product-detail.png` 逐区块比对；无版本标识条",

@@ -4,6 +4,59 @@
 
 ---
 
+## 2026-11-15 MP-04 产品详情页 验收通过（CC 顺利完成 + Hermes 修两处真缺陷）
+
+CC 会话 `proc_57a4c7b76b2d`，**首次未挂死**（前两次 MP-03A/03B 均在收尾卡死）——
+派活 prompt 里加的「COMMIT EARLY AND OFTEN」硬要求生效了。4 个分步提交：
+
+| commit | 内容 |
+|---|---|
+| `ed26b4f` | 详情页 V3：海报区 + 分页点 + 操作组 + 详情/实拍图 Tab（733 行） |
+| `d5ab45b` | model 15 项 + 页面 22 项单测 |
+| `884ca40` | e2e 双段脚本（静态 34 项） |
+| `6545b42` | sprint-output |
+| `8a91e20` | **Hermes 修 CC 标记的两个真缺陷**（见下） |
+
+### 交付内容（spec §5.4 逐条）
+海报区（bg cream radius8 / 品牌行 Inter Bold 10 字距1 / 产品名 Bold 23 / 副标 Regular 11 /
+产品图 h190 / 信息条 bg yellowBg）→ 分页点 6×6（1 张时隐藏）→ 基本信息（产品名 Bold 19 /
+型号 Regular 13 / 操作组 gap20：分享 24 + 小程序码 24 + 圆形选款 52×52 shadow-fab）→
+分隔条 h10 → 详情区（Tab 34 高 radius6，选中 navy / 未选 fill；细节图 h180；说明 gap10）
+
+**Q13 热区**：分享/小程序码透明热区 ≥44×44（视觉不变）。
+
+### Hermes 修复 CC 自标记的两个真缺陷
+CC 在 sprint-output 里诚实标记了风险，验收核实**都是真的**：
+
+**① 富文本图片真机不显示**
+`detail_content` 含 `<img src="/uploads/demo/...">`，`<rich-text>` 的 nodes 不会被
+小程序自动补 base。web dev server 有同源代理所以看不出来，**真机全部白图**。
+→ 新增 `rewriteRichTextImageSrc()`：只重写 `<img>` 的 src，跳过 http(s)/data:/wxfile:，
+支持单双引号与多图，base 为空时原样返回。
+
+**② spec §5.4 ⑤ 小标题样式丢失**
+spec 要求产品说明小标题 Bold 18 navy，但 `<rich-text>` 内部节点不受页面 scoped CSS
+影响，`<h3>` 拿不到样式。
+→ 新增 `inlineRichTextHeadings()`：给 h1~h4 内联 Bold 18 navy；已有 style 的不覆盖
+（尊重运营在 wangEditor 的自定义）。两者合并为 `normalizeRichText()`。
+
+补 16 项单测（url.test.ts 7→22）。
+
+### 独立复跑
+- `npx vitest run` → **333 passed**（MP-03B 基线 317，+16）
+- `npm run type-check` → exit 0
+- `npm run build:mp-weixin` → DONE 0 err（detail.* 已产出）
+- e2e 静态段 → **34 项 PASS / 0 FAIL**（hex=0 / 裸间距=0 / 裸行高=0 / 热区 44×44 / 无版本条）
+- e2e 动态段 → automator 端口阻塞（exit 124），如实记录
+
+### 遗留
+1. **海报外距**：spec 只给内 p16，CC 取外距 0（贴边），需设计确认（CC 已标记待确认）
+2. 小程序码弹层为 Q8 最小可用实现，非最终视觉
+3. automator 动态走查仍阻塞（开发者工具扫码 + 服务端口）
+4. 动态 e2e 复跑前须先 `npm run dev:mp-weixin` 重建 dev 产物（dist/dev 是旧产物）
+
+---
+
 ## 2026-11-15 BE-11 补寝具三款 + MP-03B 产品页 验收通过（Hermes）
 
 ### BE-11 seed 补 9B/9D/9P（用户决策方案 1）
