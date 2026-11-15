@@ -43,7 +43,7 @@ import WechatNav from "@/components/frame/WechatNav.vue";
 import Icon from "@/components/icons/Icon.vue";
 import type { Product } from "@/types/product";
 import { useSelectionStore } from "@/stores/useSelectionStore";
-import { absoluteUrl } from "@/utils/url";
+import { absoluteUrl, normalizeRichText } from "@/utils/url";
 
 type PageStatus = "loading" | "ready" | "error";
 
@@ -89,7 +89,12 @@ const modelLine = computed((): string =>
   product.value ? modelLineOf(product.value) : ""
 );
 
-const detailContent = computed((): string => product.value?.detail_content ?? "");
+const detailContent = computed((): string =>
+  // 富文本规范化：① <img src="/uploads/..."> 补绝对地址（<rich-text> 不会自动补
+  // base，否则真机图片全不显示）② h1~h4 内联 Bold 18 navy（spec §5.4 ⑤ 小标题样式，
+  // scoped CSS 管不到 rich-text 内部节点）。CC 遗留风险 ②③。
+  normalizeRichText(product.value?.detail_content ?? "")
+);
 
 onLoad((options) => {
   const id = parseProductId(options?.id);
