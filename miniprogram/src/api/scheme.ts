@@ -26,6 +26,18 @@ export interface WxSchemeDetail {
   products: WxSchemeProduct[];
 }
 
+/** 公开方案回显（免登录只读，无 user_id/openid，仅 nickname 展示）。 */
+export interface WxPublicScheme {
+  id: number;
+  title: string;
+  remark: string | null;
+  product_count: number;
+  share_count: number;
+  nickname: string | null;
+  create_time: string | null;
+  products: WxSchemeProduct[];
+}
+
 /** 我的方案列表项。 */
 export interface WxSchemeListItem {
   id: number;
@@ -80,4 +92,16 @@ export function getSchemes(
 /** 删除方案（软删除，仅创建者）。 */
 export function deleteScheme(id: number): Promise<null> {
   return del<null>(`/wxapi/schemes/${id}`, { silent: true });
+}
+
+/** 公开方案回显（访客只读，免登录）。 */
+export function getPublicScheme(id: number): Promise<WxPublicScheme> {
+  return get<WxPublicScheme>(`/wxapi/schemes/${id}/public`, undefined, {
+    silent: true,
+  });
+}
+
+/** 分享成功后计数 +1。 */
+export function shareScheme(id: number): Promise<null> {
+  return post<null>(`/wxapi/schemes/${id}/share`, {}, { silent: true });
 }

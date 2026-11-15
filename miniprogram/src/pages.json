@@ -83,6 +83,13 @@
         "navigationStyle": "custom",
         "navigationBarTitleText": "方案列表"
       }
+    },
+    {
+      "path": "pages/scheme/preview",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "LEKASI 乐卡思"
+      }
     }
   ],
   "tabBar": {

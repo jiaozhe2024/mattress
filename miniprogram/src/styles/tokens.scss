@@ -115,6 +115,7 @@ $space-8: 8px;
 $space-9: 9px;   // 产品页两列网格列间距（spec §5.3 每行 gap9）
 $space-10: 10px; // 快捷入口 gap10、详情标签 gap10
 $space-12: 12px;
+$space-14: 14px; // 底部操作条内边距（spec §5.5/§5.9 p14）
 $space-16: 16px;
 $space-18: 18px; // 分类列表系列横幅 p18
 $space-20: 20px; // 首页正文板块间距、操作组 gap20
@@ -248,6 +249,7 @@ $version-bar-height: 24px; // Q12 版本标识条：仅登记，不实现
   --space-9: 9px;
   --space-10: 10px;
   --space-12: 12px;
+  --space-14: 14px;
   --space-16: 16px;
   --space-18: 18px;
   --space-20: 20px;
