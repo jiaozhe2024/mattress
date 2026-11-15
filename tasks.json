@@ -198,7 +198,7 @@
       "id": "MP-05A",
       "title": "选品页（V3 还原：双栏分类 + 产品网格 + 已选栏）",
       "description": "【MP-03B 后派】新建 `pages/scheme/selection.vue`（替换 `config.ts` 中 SELECTION_PAGE 占位），依据 `references/plan-02-picker.png` + `spec.md §5.6`。①导航 WechatNav 二级页，标题 `LEKASI 乐卡思`。②搜索区域 px16 py12：搜索框 327×36 圆角 18 bg #f4f6fa，icon/search 16×16 left14 top10，占位 `输入型号搜索` Regular 13 #8a90a3 left38 top9（按型号过滤，空结果不做插图 Q8）。③**左右双栏**：分类导航宽 94 bg #f4f6fa gap4，每项 h56 px8 文字 Regular 12 居中 —— 当前分类白底 + 左侧 3×16 bg yellow 指示条 top20 + 文字 navy，其余文字 text2；可选产品区自适应宽（**Q10：按 375px 屏重算，严禁硬编码 126.92px**）bg #f4f6fa px9 pb12 gap10，每行 gap8 两列，产品卡自适应宽白底圆角 12 shadow/card —— 主图 object-cover、内容区左 9 上 119 —— 产品名 Medium **10px**（Q11 取整，原稿 9.88）、规格 Inter Regular **8px** text3（原稿 7.6）、标签行（`舒适睡感` 圆角 8 bg #fff3c4 文字 Medium 8 #6b4e00；`查看详情` 圆角 3 bg #f4f6fa 文字 Regular 8 #8a90a3）；右上操作圆钮 21×21 圆角 11 —— 未选 bg #f7c400 + `+` navy，已选 bg #e9ecf2 + `✓` #8a90a3。④**已选栏** bg navy p12 gap10 居中：已选缩略图区宽 150 gap6（可移除缩略图 49×55 圆角 4 bg cream，产品图 49×38 object-cover，`×` Inter Regular 12 navy 居中）、`已选：N` Regular 12 textInv 行高 1.45、`OK` 90×42 圆角 20 bg yellow 文字 Medium 15 navy 行高 22。⑤交互：点分类切右栏；点 `+` 加入变 `✓` 且已选栏 +1；点 `✓` 移出；点缩略图 `×` 移除；点 OK → 方案编辑页 MP-05B。选品数据全程走 useSelectionStore（核心约定 9）。**Q13 热区先行**：`+`/`✓` 视觉 21×21 不变但透明热区扩到 ≥44×44。⑥**不实现版本标识条**。⑦交付 vitest + `scripts/e2e/scheme-selection.auto.js`。",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "blocked_by": "MP-07, BE-10",
       "verify": "`npm run build:mp-weixin` 0 error；e2e 断言：左分类栏宽 94、当前分类有左侧 3×16 指示条、右栏两列产品卡、点 `+` 后按钮变 `✓` 且已选数量 +1、再点变回 `+` 且数量 -1、点缩略图 `×` 移除、点 OK 跳方案编辑页并带出已选；产品名字号取整为 10px（非 9.88）；`+`/`✓` 透明热区 ≥44×44；截图与 `references/plan-02-picker.png` 逐区块比对；无版本标识条",
