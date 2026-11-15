@@ -374,7 +374,8 @@ function onFooterTap(): void {
         <text class="ss-ok-text">{{ OK_LABEL }}</text>
       </view>
     </view>
-    <SafeArea background="#1a2260" />
+    <!-- 已选栏之下为页面白底安全区（基线图：navy 条下接白色手势区） -->
+    <SafeArea />
   </view>
 </template>
 
@@ -624,7 +625,7 @@ function onFooterTap(): void {
   justify-content: center;
   width: 44px;
   height: 15px;
-  border-radius: $radius-4;
+  border-radius: 3px;
   background-color: $color-fill;
 }
 
@@ -637,10 +638,10 @@ function onFooterTap(): void {
   white-space: nowrap;
 }
 
-/* Q13：透明热区 44×44（视觉 21×21 贴内容区右缘，top 居中于 37） */
+/* Q13：透明热区 44×44（视觉 21×21 贴内容区右缘，垂直与标签行对齐） */
 .ss-card-action {
   position: absolute;
-  top: 26px;
+  top: 24px;
   right: 0;
   display: flex;
   align-items: center;
@@ -732,10 +733,11 @@ function onFooterTap(): void {
   background-color: $color-navy;
 }
 
-/* 已选缩略图区：宽 150 gap6（横向滚动，全部缩略图均可移除） */
+/* 已选缩略图区：宽 150 gap6（横向滚动，全部缩略图均可移除；窄屏可收缩） */
 .ss-thumb-area {
-  flex-shrink: 0;
+  flex: 0 1 150px;
   width: 150px;
+  min-width: 0;
   height: 55px;
   white-space: nowrap;
 }
@@ -775,13 +777,14 @@ function onFooterTap(): void {
 }
 
 .ss-count {
-  flex: 1;
+  flex: 1 0 auto;
   font-family: $font-family-cn;
   font-size: $font-12;
   font-weight: $font-weight-regular;
   line-height: $line-height-12;
   color: $color-text-inv;
   text-align: center;
+  white-space: nowrap;
 }
 
 .ss-ok {
