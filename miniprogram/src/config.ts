@@ -1,6 +1,6 @@
 /** 全局路由与微信能力占位配置（上线前替换为真实值）。 */
 
-/** 选品/方案页目标路由（MP-05 落地前 SuspenseFab 回退到产品分类 tab）。 */
+/** 选品页（MP-05A 已落地）；navigateTo 失败仍回退产品分类 tab（SelectFab）。 */
 export const SELECTION_PAGE = "/pages/scheme/selection";
 
 /** 方案编辑页（MP-05 落地前产品列表底部已选栏 OK 回退为 toast 保留选品）。 */
