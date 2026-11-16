@@ -4,6 +4,56 @@
 
 ---
 
+## 2026-11-16 e2e 端口探测改造 + 动态断言阻塞定性（Hermes）
+
+### 背景
+此前多轮 e2e 报「DevTools 自动化端口 9420 未开启」，一直被当作「服务端口没开」
+让用户去 GUI 手点。本次查清：**端口一直是开的，只是端口号不是 9420**。
+
+### 根因（两层）
+1. **端口随机**：DevTools 首次启动随机分配自动化端口并写入本地配置
+   `WeappLocalData/localstorage_*.json` 的 `security.port`。实测三轮分别出现
+   **64343 → 52757 → 38159**。脚本硬编码 9420，永远连不上。
+2. **预检时机错**：脚本在 `automator.launch()` **之前**做端口预检，未通过即退出。
+   但 `automator.launch` 本身会拉起 DevTools 并让它打开服务端口 ——
+   DevTools 未运行时预检必然失败，等于「先量体温再决定要不要进医院」。
+
+### 改动
+| 文件 | 改动 |
+|---|---|
+| `scripts/e2e/_automationPort.js` | 新增。读 DevTools 配置拿真实端口 + TCP 探测，支持 `WX_AUTOMATION_PORT` 覆盖 |
+| `mine/scheme-edit/scheme-list/scheme-preview/scheme-selection.auto.js` | 删硬编码 9420，接自动探测 |
+| 同上 5 个文件 | 端口预检由「阻断退出」改为「仅打印诊断」，直接尝试 launch |
+
+11 个 e2e 脚本 `node --check` 全部通过，无 `9420` 残留。
+
+### 动态断言仍无法执行 —— 定性为微信平台限制
+`mine.auto.js` 静态断言 **62 PASS / 0 FAIL**（布局/文案/token/路由/配置兜底全覆盖）。
+动态段执行结果：
+```
+[10.0s] ✓ launch 成功
+[30.0s] ✗ currentPage 失败: 20s 超时
+[55.0s] ✗ reLaunch   失败: 25s 超时
+[63.0s] ✗ close      失败: 8s 超时
+```
+
+**根因**：`miniprogram/src/manifest.json` 的 `mp-weixin.appid = "touristappid"`（游客模式），
+后端 `.env` 的 `WX_APPID` 亦为空。游客模式下 automator 能连上 DevTools，
+但小程序运行时拒绝响应自动化接口 —— 能打开，不能驱动。
+
+**这是账号层面限制，不是代码缺陷，Hermes 无法在代码内修复。**
+已登记 **MP-08（blocked）** 跟踪，解除条件：真实 AppID 填入 manifest.json +
+后端 `.env`，再逐页复跑。
+
+### 当前验收标准
+静态 e2e 作为现阶段验收依据（覆盖视觉还原、文案、token 合规、路由注册、配置兜底）。
+动态 e2e（点击跳转链路）待 AppID 到位后补验。
+
+### 任务完成度
+done 22 / cancelled 3 / **blocked 2**（BE-07 海报 v2.1、MP-08 动态 e2e）
+
+---
+
 ## 2026-11-15 BE-09 Admin 数据与系统管理完成 —— 开发任务全部收尾（Hermes 实现）
 
 ### 交付

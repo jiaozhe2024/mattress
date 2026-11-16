@@ -42,8 +42,7 @@ const MP_DIST = path.join(MP_ROOT, "dist", "dev", "mp-weixin");
 const SHOT_DIR = path.join(REPO_ROOT, "docs", "exec-plans", "screenshots");
 const CLI_PATH = "/Applications/wechatwebdevtools.app/Contents/MacOS/cli";
 const API_BASE = "http://localhost:8000/api/v1";
-const AUTOMATION_HOST = "127.0.0.1";
-const AUTOMATION_PORT = 9420;
+const { resolveAutomationPort } = require("./_automationPort");
 
 const localRequire = createRequire(require.resolve(path.join(MP_ROOT, "package.json")));
 const automator = localRequire("miniprogram-automator");
@@ -94,19 +93,14 @@ function httpJson(url) {
   });
 }
 
-function checkAutomationPort() {
-  return new Promise((resolve) => {
-    const socket = new net.Socket();
-    const done = (ok, reason) => {
-      socket.destroy();
-      resolve({ ok, reason });
-    };
-    socket.setTimeout(2500);
-    socket.once("connect", () => done(true));
-    socket.once("timeout", () => done(false, `端口 ${AUTOMATION_PORT} 连接超时`));
-    socket.once("error", (err) => done(false, err.message));
-    socket.connect(AUTOMATION_PORT, AUTOMATION_HOST);
-  });
+/**
+ * 解析 DevTools 自动化端口（自动探测）。
+ * 端口号由开发者工具首次启动随机分配并写入本地配置，
+ * 硬编码会在别的机器上误判成「服务端口没开」。
+ */
+async function checkAutomationPort() {
+  const resolved = await resolveAutomationPort();
+  return { ok: resolved.port !== null, ...resolved };
 }
 
 /** 读源码做静态断言（不依赖 DevTools）。 */
@@ -429,18 +423,16 @@ async function main() {
   console.log("\n== 静态断言（源码）==");
   const st = assertStaticSource();
 
+  // 端口预检仅作诊断，不阻断：automator.launch 会自行启动 DevTools 并开服务端口，
+  // 此刻端口没监听是正常的（DevTools 尚未运行）。
   const portState = await checkAutomationPort();
   if (!portState.ok) {
-    console.error(
-      `\n[环境阻塞] DevTools 自动化端口 ${AUTOMATION_HOST}:${AUTOMATION_PORT} 未开启（${portState.reason}）。` +
-        `请在微信开发者工具「设置-安全设置」开启服务端口后重跑。`
+    console.log(
+      `[诊断] 当前未检测到 DevTools 自动化端口（${portState.note || "未监听"}），` +
+        `将由 automator 启动开发者工具。`
     );
-    console.log(`\n静态：PASS=${st.pass} FAIL=${st.fail}`);
-    process.exitCode = st.fail > 0 ? 1 : 2;
-    return;
   }
-
-  let miniProgram;
+let miniProgram;
   let dy = { pass: 0, fail: 0 };
   try {
     miniProgram = await withTimeout(

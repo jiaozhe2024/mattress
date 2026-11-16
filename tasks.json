@@ -1,6 +1,6 @@
 {
   "project": "mattress-ux（床垫选品方案小程序，LEKASI 乐卡思）",
-  "last_updated": "2026-11-14",
+  "last_updated": "2026-11-16",
   "design_baseline": "docs/design/design-pack-readme.md（V3 / LEKASI）。UI 唯一依据 = docs/design/references/*.png（10 张）+ design-spec/spec.md + design-spec/design-tokens.md + acceptance/visual-checklist.md。jp/ 为 V2.0 旧稿（宝顿系红白视觉），已作废，禁止再引用。",
   "current_focus": "V3 设计基线落地启动（用户 2026-11-14 决策）。MP-02/MP-03 按 V3 全量返工；先建全局复用层 + 首页还原，验收后再逐页放。派发顺序：①BE-10（分类 subtitle + V3 八分类 seed）②MP-07（全局复用层）③MP-02（首页返工）→ 验收后再放 MP-03A/03B/04/05A-D/06。待用户：①微信开发者工具扫码登录（automator 前置）②产品图/场景图真实素材（asset-inventory TODO 7 项）③BE-09 是否本轮排期",
   "tasks": [
@@ -263,6 +263,16 @@
       "blocked_by": "",
       "verify": "vitest 445 passed（含新增 5 项：无 id 不请求/有 id 还原选品与标题/载入失败不污染 store/id 非法不请求/载入后保存走 PUT）；type-check 0；build 0 err",
       "requires_eval": false
+    },
+    {
+      "id": "MP-08",
+      "title": "动态 e2e 补验（需真实小程序 AppID）",
+      "description": "【2026-11-16 收尾发现，用户决策：先记阻塞，静态 e2e 作为当前验收标准】所有页面已交付 scripts/e2e/*.auto.js，其中静态断言部分（源码级：布局/文案/token/路由/配置兜底）全部可跑且通过（mine 62 项 PASS/0 FAIL）。动态断言（automator 驱动真机交互）无法执行，根因是 miniprogram/src/manifest.json 的 mp-weixin.appid = \"touristappid\"（游客模式），后端 .env 的 WX_APPID 亦为空。游客模式下 automator.launch 能成功（约 10s），但 currentPage / reLaunch / close 全部超时——微信限制，非代码缺陷。解除条件：微信公众平台注册小程序取得 wx 开头 18 位 AppID，填入 manifest.json 的 mp-weixin.appid 与后端 .env 的 WX_APPID / WX_SECRET，然后按页复跑动态断言。同时本轮已修：① 5 个脚本硬编码端口 9420 → 改为 scripts/e2e/_automationPort.js 自动探测（DevTools 端口每次随机，实测出现过 64343/52757/38159）；② 端口预检由「阻断退出」改为「仅诊断」——automator.launch 本身会拉起 DevTools，launch 前预检必然失败。",
+      "status": "blocked",
+      "priority": "medium",
+      "blocked_by": "缺真实小程序 AppID（游客模式 touristappid 下 automator 自动化接口不可用）",
+      "verify": "配置真实 AppID 后逐页执行 node scripts/e2e/<页>.auto.js，动态段 PASS>0 且 FAIL=0；重点验点击跳转：首页型号入口→产品列表、产品卡→详情、选品→方案编辑、方案编辑→预览、TabBar 四项切换、客服入口调用 wx.openCustomerServiceChat",
+      "requires_eval": true
     }
   ]
 }

@@ -38,8 +38,7 @@ const CATEGORIES_API = `${API_BASE}/wxapi/categories`;
 const PAGE_PATH = "pages/scheme/selection";
 const LAUNCH_TIMEOUT_MS = 45000;
 const WATCHDOG_TIMEOUT_MS = 240000;
-const AUTOMATION_PORT = 9420;
-const AUTOMATION_HOST = "127.0.0.1";
+const { resolveAutomationPort } = require("./_automationPort");
 
 /**
  * 预检 DevTools 自动化端口。
@@ -48,19 +47,14 @@ const AUTOMATION_HOST = "127.0.0.1";
  * 无限等待，整个 node 事件循环被阻塞 —— 定时器看门狗也救不回来（MP-03A/B 两次
  * 收尾挂死同源）。先做 TCP 探测，未开启即按环境阻塞退出，绝不挂死、绝不伪造。
  */
-function checkAutomationPort() {
-  return new Promise((resolve) => {
-    const socket = new net.Socket();
-    const done = (ok, reason) => {
-      socket.destroy();
-      resolve({ ok, reason });
-    };
-    socket.setTimeout(2500);
-    socket.once("connect", () => done(true));
-    socket.once("timeout", () => done(false, `端口 ${AUTOMATION_PORT} 连接超时`));
-    socket.once("error", (err) => done(false, err.message));
-    socket.connect(AUTOMATION_PORT, AUTOMATION_HOST);
-  });
+/**
+ * 解析 DevTools 自动化端口（自动探测）。
+ * 端口号由开发者工具首次启动随机分配并写入本地配置，
+ * 硬编码会在别的机器上误判成「服务端口没开」。
+ */
+async function checkAutomationPort() {
+  const resolved = await resolveAutomationPort();
+  return { ok: resolved.port !== null, ...resolved };
 }
 
 const localRequire = createRequire(
@@ -407,19 +401,16 @@ async function main() {
 
   // 预检 DevTools 自动化端口：未开启时 automator.launch 会阻塞事件循环导致挂死，
   // 必须在 launch 之前按环境阻塞退出（静态段结果仍然有效）。
+  // 端口预检仅作诊断，不阻断：automator.launch 会自行启动 DevTools 并开服务端口，
+  // 此刻端口没监听是正常的（DevTools 尚未运行）。
   const portState = await checkAutomationPort();
   if (!portState.ok) {
-    console.error(
-      `[环境阻塞] DevTools 自动化端口 ${AUTOMATION_HOST}:${AUTOMATION_PORT} 未开启` +
-        `（${portState.reason}）。请在微信开发者工具「设置-安全设置」开启服务端口后重跑。`
+    console.log(
+      `[诊断] 当前未检测到 DevTools 自动化端口（${portState.note || "未监听"}），` +
+        `将由 automator 启动开发者工具。`
     );
-    process.exitCode = 2;
-    console.log(`\n静态：PASS=${st.pass} FAIL=${st.fail}`);
-    if (st.fail > 0) process.exitCode = 1;
-    return;
   }
-
-  fs.mkdirSync(SHOT_DIR, { recursive: true });
+fs.mkdirSync(SHOT_DIR, { recursive: true });
   let miniProgram;
   let dy = { pass: 0, fail: 0 };
   try {
