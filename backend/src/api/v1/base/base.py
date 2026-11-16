@@ -30,18 +30,32 @@ from utils.jwt import create_token_pair, verify_token
 
 
 class AdaptiveEnvConfig(StarletteConfig):
-    def _read_file(self, file_name):
-        encodings = ["utf-8", "utf-8-sig"]
+    def _read_file(self, file_name, encoding=None):
+        """按多种编码尝试读取 .env（中文路径/GBK 文件在 Windows 上常见）。
+
+        说明：starlette >=1.10 调用本方法时传 (file_name, encoding) 两个位置参数，
+        而早期实现只接受 file_name，导致 os.path.isfile(".env") 为真时
+        （即 cwd 下存在 .env）启动即崩：
+            TypeError: _read_file() takes 2 positional arguments but 3 were given
+        Docker 镜像里不拷贝 .env，所以这条路径从未被触发；裸机部署（cwd 有 .env）
+        必然踩到。这里保留 encoding 形参以兼容两种调用约定。
+        """
+        encodings = []
+        if encoding:
+            encodings.append(encoding)
+        for e in ("utf-8", "utf-8-sig"):
+            if e.lower() not in (x.lower() for x in encodings):
+                encodings.append(e)
         preferred = locale.getpreferredencoding(do_setlocale=False)
         if preferred and preferred.lower() not in (e.lower() for e in encodings):
             encodings.append(preferred)
         encodings.append("latin-1")  # final fallback to avoid UnicodeDecodeError
 
         last_error: UnicodeDecodeError | None = None
-        for encoding in encodings:
+        for enc in encodings:
             try:
                 file_values: dict[str, str] = {}
-                with open(file_name, encoding=encoding) as input_file:
+                with open(file_name, encoding=enc) as input_file:
                     for line in input_file.readlines():
                         line = line.strip()
                         if "=" in line and not line.startswith("#"):
