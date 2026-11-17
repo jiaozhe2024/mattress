@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   BEDDING_ENTRIES,
-  HOME_HERO,
   HOME_SERVICE_CARDS,
   HOME_SERVICE_TITLE,
   QUICK_ENTRIES,
@@ -28,12 +27,6 @@ function makeCategory(
 }
 
 describe("homeModel 静态内容（spec.md §5.1）", () => {
-  it("品牌主视觉文案与稿件一致（两行标题）", () => {
-    expect(HOME_HERO.brand).toBe("LEKASI 乐卡思");
-    expect(HOME_HERO.titleLines).toEqual(["把舒适，", "带回每一个夜晚"]);
-    expect(HOME_HERO.subtitle).toBe("探索适合自己与家人的好眠选择");
-  });
-
   it("系列卡最多 4 条", () => {
     expect(SERIES_CARD_LIMIT).toBe(4);
   });

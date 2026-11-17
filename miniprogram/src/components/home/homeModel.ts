@@ -7,13 +7,6 @@
  */
 import type { WxCategory } from "@/types/home";
 
-/** 品牌主视觉文案（spec.md §5.1 ①）。 */
-export const HOME_HERO = {
-  brand: "LEKASI 乐卡思",
-  titleLines: ["把舒适，", "带回每一个夜晚"],
-  subtitle: "探索适合自己与家人的好眠选择",
-} as const;
-
 /** 2×2 系列卡最多展示条数（sort 1-4）。 */
 export const SERIES_CARD_LIMIT = 4;
 

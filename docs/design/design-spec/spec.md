@@ -70,13 +70,11 @@
 
 结构：微信导航 → 版本条 → 首页正文（`bg cream` `p16` `gap20`）→ 底部 Tab → 选款 FAB
 
-**① 品牌主视觉卡**（`bg navy`，圆角 16）
-- 文案区 `px24 pt24 pb16` `gap8`
-  - `LEKASI 乐卡思` — Inter Bold 13px, yellow, 字距 2
-  - `把舒适，` / `带回每一个夜晚` — Noto Sans SC Bold 30px, textInv, 行高 1.25（两行）
-  - `探索适合自己与家人的好眠选择` — Regular 12px, textInv, 行高 1.45
-- 卧室场景图 h190 `object-cover`
-- 轮播指示 h24，居中 `gap5`：激活点 16×4 圆角条 `bg yellow`，其余 3 个 4×4 圆点 `bg navy50`
+**① 品牌主视觉：整卡轮播**（`bg navy`，圆角 16）
+- 不再渲染文案区（品牌行 / 两行标题 / 副标题），由 Q16 决议移除
+- 轮播 swiper 撑满整卡：h383（= 原「文案区 169 + 场景图 190 + 指示点 24」整卡高度），图片 `object-cover` 铺满
+- 轮播指示点**浮于图片底部**（绝对定位 `bottom 12`，`h24` 居中 `gap5`）：激活点 16×4 圆角条 `bg yellow`，其余 4×4 圆点 `bg navy50`；仅 1 张时隐藏
+- `banners` 为空时整块 hero 不渲染（首页直接从产品系列入口开始）
 
 **② 产品系列入口**（`gap8`）
 - 2×2 系列卡（`bg textInv`，h76，圆角 8，`gap5`，居中）

@@ -18,7 +18,6 @@ import WechatNav from "@/components/frame/WechatNav.vue";
 import Icon from "@/components/icons/Icon.vue";
 import {
   BEDDING_ENTRIES,
-  HOME_HERO,
   HOME_SERVICE_CARDS,
   HOME_SERVICE_TITLE,
   QUICK_ENTRIES,
@@ -215,56 +214,44 @@ function onQuickEntryTap(key: QuickEntryKey): void {
         <text class="home-state-text">暂无内容</text>
       </view>
 
-      <!-- ① 品牌主视觉卡（Q14：保留轮播；banners 为空时退化为纯文案卡） -->
-      <view class="home-hero">
-        <view class="home-hero-text">
-          <text class="home-hero-brand">{{ HOME_HERO.brand }}</text>
-          <text
-            v-for="line in HOME_HERO.titleLines"
-            :key="line"
-            class="home-hero-title"
-            >{{ line }}</text
+      <!-- ① 品牌主视觉：整卡轮播（Q16：无文案区，banner 撑满原整卡高度） -->
+      <view v-if="banners.length > 0" class="home-hero">
+        <swiper
+          class="home-hero-swiper"
+          autoplay
+          circular
+          :interval="5000"
+          :duration="400"
+          :current="bannerIndex"
+          @change="onBannerChange"
+        >
+          <swiper-item
+            v-for="banner in banners"
+            :key="banner.id"
+            class="home-hero-slide"
+            @tap="onBannerTap(banner)"
           >
-          <text class="home-hero-subtitle">{{ HOME_HERO.subtitle }}</text>
-        </view>
-        <block v-if="banners.length > 0">
-          <swiper
-            class="home-hero-swiper"
-            autoplay
-            circular
-            :interval="5000"
-            :duration="400"
-            :current="bannerIndex"
-            @change="onBannerChange"
-          >
-            <swiper-item
-              v-for="banner in banners"
-              :key="banner.id"
-              class="home-hero-slide"
-              @tap="onBannerTap(banner)"
-            >
-              <view class="home-hero-placeholder" />
-              <image
-                v-if="!failedBannerIds.includes(banner.id)"
-                class="home-hero-image"
-                :src="absoluteUrl(banner.image)"
-                mode="aspectFill"
-                lazy-load
-                @error="onBannerImageError(banner.id)"
-              />
-            </swiper-item>
-          </swiper>
-          <view v-if="indicatorCount > 0" class="home-hero-indicator">
-            <view
-              v-for="(banner, index) in banners"
-              :key="banner.id"
-              class="home-hero-dot"
-              :class="{
-                'home-hero-dot--active': index === bannerIndex % banners.length,
-              }"
+            <view class="home-hero-placeholder" />
+            <image
+              v-if="!failedBannerIds.includes(banner.id)"
+              class="home-hero-image"
+              :src="absoluteUrl(banner.image)"
+              mode="aspectFill"
+              lazy-load
+              @error="onBannerImageError(banner.id)"
             />
-          </view>
-        </block>
+          </swiper-item>
+        </swiper>
+        <view v-if="indicatorCount > 0" class="home-hero-indicator">
+          <view
+            v-for="(banner, index) in banners"
+            :key="banner.id"
+            class="home-hero-dot"
+            :class="{
+              'home-hero-dot--active': index === bannerIndex % banners.length,
+            }"
+          />
+        </view>
       </view>
 
       <!-- ② 产品系列入口：2×2 系列卡 + 3 寝具入口 -->
@@ -348,7 +335,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
       </view>
     </view>
 
-    <SelectFab />
+    <view class="select-fab-host"><SelectFab class="select-fab-anchor" /></view>
   </view>
 </template>
 
@@ -401,48 +388,18 @@ function onQuickEntryTap(key: QuickEntryKey): void {
   color: $color-navy;
 }
 
-/* ---------------- ① 品牌主视觉卡 ---------------- */
+/* ---------------- ① 品牌主视觉：整卡轮播 ---------------- */
 .home-hero {
+  position: relative;
   overflow: hidden;
   border-radius: $radius-16;
   background-color: $color-navy;
 }
 
-.home-hero-text {
-  display: flex;
-  flex-direction: column;
-  gap: $space-8;
-  padding: $space-24 $space-24 $space-16;
-}
-
-.home-hero-brand {
-  font-family: $font-family-en;
-  font-size: $font-13;
-  font-weight: $font-weight-bold;
-  line-height: 1;
-  letter-spacing: 2px;
-  color: $color-yellow;
-}
-
-.home-hero-title {
-  font-family: $font-family-cn;
-  font-size: $font-30;
-  font-weight: $font-weight-bold;
-  line-height: $line-height-30;
-  color: $color-text-inv;
-}
-
-.home-hero-subtitle {
-  font-family: $font-family-cn;
-  font-size: $font-12;
-  font-weight: $font-weight-regular;
-  line-height: $line-height-12;
-  color: $color-text-inv;
-}
-
+/* 高度 = 原「文案区 + 190 swiper + 24 指示点」整卡高度，banner 撑满 */
 .home-hero-swiper {
   width: 100%;
-  height: 190px;
+  height: 383px;
 }
 
 .home-hero-slide {
@@ -469,7 +426,12 @@ function onQuickEntryTap(key: QuickEntryKey): void {
   height: 100%;
 }
 
+/* 指示点浮在图片底部（不占额外高度，图片区域仍撑满整卡） */
 .home-hero-indicator {
+  position: absolute;
+  right: 0;
+  bottom: $space-12;
+  left: 0;
   display: flex;
   align-items: center;
   justify-content: center;

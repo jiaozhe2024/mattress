@@ -93,18 +93,14 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("首页 V3 结构（spec.md §5.1 + Q14/Q15）", () => {
-  it("渲染品牌主视觉卡：品牌行 + 两行标题 + 副标题 + 轮播", async () => {
+describe("首页 V3 结构（spec.md §5.1 + Q14/Q15/Q16）", () => {
+  it("品牌主视觉区只含轮播：无文案区，swiper 撑满原整卡高度", async () => {
     const wrapper = await mountHome();
     expect(wrapper.find(".home-hero").exists()).toBe(true);
-    expect(wrapper.find(".home-hero-brand").text()).toBe("LEKASI 乐卡思");
-    expect(wrapper.findAll(".home-hero-title").map((el) => el.text())).toEqual([
-      "把舒适，",
-      "带回每一个夜晚",
-    ]);
-    expect(wrapper.find(".home-hero-subtitle").text()).toBe(
-      "探索适合自己与家人的好眠选择"
-    );
+    expect(wrapper.find(".home-hero-text").exists()).toBe(false);
+    expect(wrapper.find(".home-hero-brand").exists()).toBe(false);
+    expect(wrapper.find(".home-hero-title").exists()).toBe(false);
+    expect(wrapper.find(".home-hero-subtitle").exists()).toBe(false);
     expect(wrapper.find(".home-hero-swiper").exists()).toBe(true);
     expect(wrapper.findAll(".home-hero-slide")).toHaveLength(BANNERS.length);
   });
@@ -125,11 +121,12 @@ describe("首页 V3 结构（spec.md §5.1 + Q14/Q15）", () => {
     expect(wrapper.find(".home-hero-indicator").exists()).toBe(false);
   });
 
-  it("banners 为空时主视觉卡退化为静态文案卡（无 swiper、无图片区）", async () => {
+  it("banners 为空时整块 hero 不渲染（首页直接从系列卡开始）", async () => {
     mockGetHome.mockResolvedValue(makeHome([]));
     const wrapper = await mountHome();
-    expect(wrapper.find(".home-hero-text").exists()).toBe(true);
+    expect(wrapper.find(".home-hero").exists()).toBe(false);
     expect(wrapper.find(".home-hero-swiper").exists()).toBe(false);
+    expect(wrapper.findAll(".home-series-card")).toHaveLength(4);
   });
 
   it("系列卡取前 4 条，标题与副文案非空（banner_image 为 null 走文字通道）", async () => {
