@@ -30,6 +30,7 @@
  * 退出码：0=通过；1=断言失败；2=环境阻塞（后端不可达/DevTools 未登录/端口未开启）
  */
 const fs = require("fs");
+const { launchAndReady, closeQuiet, navInfo } = require("./_automationLaunch");
 const path = require("path");
 const http = require("http");
 const { createRequire } = require("module");
@@ -204,10 +205,9 @@ async function runAssertions(miniProgram, baseline) {
     `应落在产品详情页，实际 ${page && page.path}`
   );
 
-  // 导航标题
-  const navTitle = await page.$(".wnav-title");
-  const navText = navTitle ? (await navTitle.text()).trim() : "";
-  chk("导航标题为 LEKASI 乐卡思", navText === "LEKASI 乐卡思", `got="${navText}"`);
+  // 导航标题（组件内部节点不可达，读宿主 data-nav-title）
+  const nav = await navInfo(page);
+  chk("导航标题为 LEKASI 乐卡思", nav.title === "LEKASI 乐卡思", `got="${nav.title}"`);
 
   // 产品名 / 型号 / 规格 / 睡感
   const nameEl = await waitFor(page, ".pd-name");
@@ -322,10 +322,7 @@ async function main() {
   let miniProgram;
   let dy = { pass: 0, fail: 0 };
   try {
-    miniProgram = await automator.launch({
-      cliPath: CLI_PATH,
-      projectPath: MP_DIST,
-    });
+    miniProgram = await launchAndReady(automator, CLI_PATH, MP_DIST);
   } catch (err) {
     console.error(`[环境阻塞] automator 启动失败：${err.message}`);
     process.exitCode = 2;
@@ -344,7 +341,7 @@ async function main() {
     console.error(blocked ? `[环境阻塞] ${msg}` : `[断言失败] ${msg}`);
     process.exitCode = blocked ? 2 : 1;
   } finally {
-    if (miniProgram) await miniProgram.close();
+    if (miniProgram) await closeQuiet(miniProgram);
   }
 
   const totalPass = st.pass + dy.pass;

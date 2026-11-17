@@ -218,22 +218,34 @@ describe("首页 V3 结构（spec.md §5.1 + Q14/Q15/Q16）", () => {
 });
 
 describe("首页交互", () => {
-  it("点系列卡：Pinia 写分类 + switchTab 产品 tab", async () => {
+  it("点系列卡：直达产品列表页并带 category_id/category_name（不经分类页中转）", async () => {
     const wrapper = await mountHome();
-    const uni = (globalThis as { uni: { switchTab: ReturnType<typeof vi.fn> } }).uni;
+    const uni = (globalThis as {
+      uni: { navigateTo: ReturnType<typeof vi.fn>; switchTab: ReturnType<typeof vi.fn> };
+    }).uni;
     await wrapper.findAll(".home-series-card")[1].trigger("tap");
-    const store = useProductFilterStore();
-    expect(store.requestedCategoryId).toBe(2);
-    expect(store.requestedKeyword).toBeNull();
-    expect(uni.switchTab).toHaveBeenCalledWith({ url: "/pages/product/category" });
+    // 关键回归点：必须用 navigateTo 直达产品列表，不能 switchTab 到分类页。
+    // 旧实现 switchTab 分类页 + Pinia 转发会在页面栈留下分类页，
+    // 用户点返回会回到分类页并再次跳转产品列表，形成返回死循环。
+    expect(uni.switchTab).not.toHaveBeenCalled();
+    const call = uni.navigateTo.mock.calls.at(-1)?.[0] as { url: string };
+    const url = new URL(call.url, "https://x");
+    expect(url.pathname).toBe("/pages/product/list");
+    expect(url.searchParams.get("category_id")).toBe("2");
+    expect(url.searchParams.get("category_name")).toBeTruthy();
   });
 
-  it("点寝具卡(9B)：Pinia 写 keyword=9B + switchTab 产品 tab（不是分类）", async () => {
+  it("点寝具卡(9B)：直达产品列表页并带 keyword=9B（不是分类）", async () => {
     const wrapper = await mountHome();
+    const uni = (globalThis as {
+      uni: { navigateTo: ReturnType<typeof vi.fn>; switchTab: ReturnType<typeof vi.fn> };
+    }).uni;
     await wrapper.findAll(".home-bedding-card")[0].trigger("tap");
-    const store = useProductFilterStore();
-    expect(store.requestedKeyword).toBe("9B");
-    expect(store.requestedCategoryId).toBeNull();
+    expect(uni.switchTab).not.toHaveBeenCalled();
+    const call = uni.navigateTo.mock.calls.at(-1)?.[0] as { url: string };
+    const url = new URL(call.url, "https://x");
+    expect(url.pathname).toBe("/pages/product/list");
+    expect(url.searchParams.get("keyword")).toBe("9B");
   });
 
   it("点「乐卡思资讯」跳已建资讯列表页（不弹 toast）", async () => {

@@ -185,7 +185,7 @@ function onSelect(): void {
 
 <template>
   <view class="pd-page">
-    <WechatNav :title="DETAIL_NAV_TITLE" back />
+    <WechatNav :title="DETAIL_NAV_TITLE" back class="nav-anchor" :data-nav-title="DETAIL_NAV_TITLE" :data-nav-back="1" />
 
     <scroll-view class="pd-scroll" scroll-y :show-scrollbar="false">
       <view v-if="status === 'loading'" class="pd-state">

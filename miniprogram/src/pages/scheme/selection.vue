@@ -228,7 +228,7 @@ function onFooterTap(): void {
 
 <template>
   <view class="ss-page">
-    <WechatNav :title="SELECTION_NAV_TITLE" back />
+    <WechatNav :title="SELECTION_NAV_TITLE" back class="nav-anchor" :data-nav-title="SELECTION_NAV_TITLE" :data-nav-back="1" />
 
     <!-- ① 搜索区域（px16 py12；框 327×36 圆角 18） -->
     <view class="ss-search-area">

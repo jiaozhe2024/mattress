@@ -43,6 +43,7 @@ const SHOT_DIR = path.join(REPO_ROOT, "docs", "exec-plans", "screenshots");
 const CLI_PATH = "/Applications/wechatwebdevtools.app/Contents/MacOS/cli";
 const API_BASE = "http://localhost:8000/api/v1";
 const { resolveAutomationPort } = require("./_automationPort");
+const { launchAndReady, closeQuiet, sleep: sleepShared, withTimeout: withTimeoutShared } = require("./_automationLaunch");
 
 const localRequire = createRequire(require.resolve(path.join(MP_ROOT, "package.json")));
 const automator = localRequire("miniprogram-automator");
@@ -391,8 +392,10 @@ async function runAssertions(miniProgram) {
   );
 
   // 无 FAB
-  const fab = await page.$(".select-fab");
-  chk("页面无选款 FAB", fab === null);
+  // 注：IDE 2.02 起 automator 不穿透自定义组件边界，.select-fab 恒为 null 会让此断言
+  // 变成永远通过（假阳性）。改断言页面侧宿主锚点，否定断言才真实有效。
+  const fabHost = await page.$(".select-fab-host");
+  chk("页面无选款 FAB", fabHost === null);
 
   // 截图
   fs.mkdirSync(SHOT_DIR, { recursive: true });
@@ -436,7 +439,7 @@ let miniProgram;
   let dy = { pass: 0, fail: 0 };
   try {
     miniProgram = await withTimeout(
-      automator.launch({ cliPath: CLI_PATH, projectPath: MP_DIST }),
+      launchAndReady(automator, CLI_PATH, MP_DIST),
       60000,
       "automator.launch"
     );
@@ -461,9 +464,7 @@ let miniProgram;
   } finally {
     // close 也可能挂：再套一层超时，保证进程一定退出
     if (miniProgram) {
-      await withTimeout(Promise.resolve(miniProgram.close()), 8000, "miniProgram.close").catch(
-        () => {}
-      );
+      await closeQuiet(miniProgram);
     }
   }
 

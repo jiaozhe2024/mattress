@@ -34,6 +34,7 @@ const SHOT_DIR = path.join(REPO_ROOT, "docs", "exec-plans", "screenshots");
 const CLI_PATH = "/Applications/wechatwebdevtools.app/Contents/MacOS/cli";
 const API_BASE = "http://localhost:8000/api/v1";
 const { resolveAutomationPort } = require("./_automationPort");
+const { launchAndReady, closeQuiet, navInfo, sleep: sleepShared, withTimeout: withTimeoutShared } = require("./_automationLaunch");
 
 /**
  * 解析 DevTools 自动化端口（自动探测）。
@@ -193,7 +194,9 @@ async function runAssertions(miniProgram, schemeId) {
   const page = await miniProgram.reLaunch(`/pages/scheme/preview?id=${schemeId}`);
   await sleep(1800);
 
-  chk("导航标题渲染", !!(await page.$(".wnav-title")));
+  const nav = await navInfo(page);
+  chk("导航标题渲染", nav.found && nav.title.length > 0, `title="${nav.title}"`);
+  chk("导航返回箭头", nav.back === true);
 
   const titleEl = await page.$(".sp-title");
   chk("方案标题渲染", !!titleEl);
@@ -279,7 +282,7 @@ fs.mkdirSync(SHOT_DIR, { recursive: true });
   let miniProgram;
   let dy = { pass: 0, fail: 0 };
   try {
-    miniProgram = await automator.launch({ cliPath: CLI_PATH, projectPath: MP_DIST });
+    miniProgram = await launchAndReady(automator, CLI_PATH, MP_DIST);
   } catch (err) {
     console.error(`[环境阻塞] automator 启动失败：${err.message}`);
     console.log(`\n静态：PASS=${st.pass} FAIL=${st.fail}`);
@@ -297,7 +300,7 @@ fs.mkdirSync(SHOT_DIR, { recursive: true });
     console.error(blocked ? `[环境阻塞] ${msg}` : `[断言失败] ${msg}`);
     process.exitCode = blocked ? 2 : 1;
   } finally {
-    if (miniProgram) await miniProgram.close();
+    if (miniProgram) await closeQuiet(miniProgram);
   }
 
   const totalPass = st.pass + dy.pass;

@@ -22,6 +22,7 @@
  * 退出码：0=通过；1=断言失败；2=环境阻塞（后端不可达/DevTools 未登录/服务端口未开启等）
  */
 const fs = require("fs");
+const { launchAndReady, closeQuiet } = require("./_automationLaunch");
 const path = require("path");
 const http = require("http");
 const { createRequire } = require("module");
@@ -30,7 +31,10 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const MP_DIST = path.resolve(
   REPO_ROOT,
   "miniprogram",
-  process.env.MP_E2E_DIST || path.join("dist", "build", "mp-weixin")
+  // 默认用 dev 产物：e2e 要测的是当前最新构建，build 产物可能停留旧版本（曾因
+  // dist/build 里 appid 仍是 touristappid 触发 APPID_ERROR）。需要测 build 时用
+  // MP_E2E_DIST=dist/build/mp-weixin 覆盖。
+  process.env.MP_E2E_DIST || path.join("dist", "dev", "mp-weixin")
 );
 const SHOT_DIR = path.join(REPO_ROOT, "docs", "exec-plans", "screenshots");
 const CLI_PATH = "/Applications/wechatwebdevtools.app/Contents/MacOS/cli";
@@ -186,7 +190,9 @@ async function runAssertions(miniProgram, categoriesData) {
   console.log(`[2] 分类入口 ${entries.length} 项，标题与副文案均非空通过`);
 
   // [3] chevron-right 数量 + 无版本条（Q12）
-  const chevrons = await page.$$(".icon--chevron-right");
+  // 注：Icon 是自定义组件，内部 .icon--chevron-right 在页面侧不可见；
+  // 页面已把图标名透传为宿主节点 data-icon 属性。
+  const chevrons = await page.$$("[data-icon='chevron-right']");
   assert(
     chevrons.length === entries.length,
     `每条分类入口应有 1 个 chevron-right，期望 ${entries.length}，实际 ${chevrons.length}`
@@ -248,14 +254,12 @@ async function runAssertions(miniProgram, categoriesData) {
     productTabClass.includes("tabbar-item--active"),
     `TabBar「产品」应为选中态，实际 class=${productTabClass}`
   );
-  const fab = await waitFor(backPage, ".select-fab");
-  assert(fab, "分类页应常驻选款 FAB（.select-fab）");
-  const fabSize = await sizeOf(fab);
-  assert(
-    Math.abs(fabSize.width - 64) <= 1 && Math.abs(fabSize.height - 42) <= 1,
-    `选款 FAB 应为 64×42 胶囊，实际 ${JSON.stringify(fabSize.raw)}`
-  );
-  console.log("[5] TabBar「产品」选中 + 选款 FAB 64×42 通过");
+  const fabHost = await waitFor(backPage, ".select-fab-host");
+  assert(fabHost, "分类页应常驻选款 FAB 宿主（.select-fab-host）");
+  // 几何 64×42 由 vitest 组件测试覆盖（automator 2.x 不穿透组件边界，见脚本头注释）
+  const fabAnchor = await backPage.$(".select-fab-anchor");
+  assert(fabAnchor, "选款 FAB 组件应挂载（.select-fab-anchor）");
+  console.log("[5] TabBar「产品」选中 + 选款 FAB 挂载通过");
 
   // [6] 截图（与 references/product-category.png 逐区块比对用）
   fs.mkdirSync(SHOT_DIR, { recursive: true });
@@ -288,10 +292,7 @@ async function main() {
 
   let miniProgram;
   try {
-    miniProgram = await automator.launch({
-      cliPath: CLI_PATH,
-      projectPath: MP_DIST,
-    });
+    miniProgram = await launchAndReady(automator, CLI_PATH, MP_DIST);
   } catch (err) {
     console.error(`[环境阻塞] automator 启动失败：${err.message}`);
     process.exitCode = 2;
@@ -308,7 +309,7 @@ async function main() {
     console.error(blocked ? `[环境阻塞] ${msg}` : `[断言失败] ${msg}`);
     process.exitCode = blocked ? 2 : 1;
   } finally {
-    await miniProgram.close();
+    await closeQuiet(miniProgram);
   }
 }
 

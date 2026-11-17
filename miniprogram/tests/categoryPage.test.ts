@@ -202,8 +202,14 @@ describe("产品分类页三态与降级", () => {
   });
 });
 
-describe("产品分类页兼容桥（首页 Pinia 请求 → 产品列表页）", () => {
-  it("无待处理请求时不跳转", async () => {
+describe("产品分类页不再有 Pinia 转发桥（防返回死循环回归）", () => {
+  // 旧实现在 onShow 把 Pinia 里的待处理请求转成 navigateTo 产品列表页，
+  // 导致页面栈变成「首页 → 分类页 → 产品列表」，用户点返回会回分类页、
+  // 分类页又因待处理请求再次跳产品列表，形成返回死循环。
+  // 现在首页直达产品列表页（带 URL 参数），分类页只负责展示与点击自身入口。
+  it("即使 Pinia 有待处理分类，分类页也不自行跳转", async () => {
+    const store = useProductFilterStore();
+    store.requestCategory(3);
     const wrapper = await mountCategory();
     const uni = (globalThis as { uni: { navigateTo: ReturnType<typeof vi.fn> } })
       .uni;
@@ -211,29 +217,13 @@ describe("产品分类页兼容桥（首页 Pinia 请求 → 产品列表页）"
     expect(uni.navigateTo).not.toHaveBeenCalled();
   });
 
-  it("Pinia 有待处理分类 → navigateTo 产品列表带 category_id", async () => {
-    const store = useProductFilterStore();
-    store.requestCategory(3);
-    const wrapper = await mountCategory();
-    const uni = (globalThis as { uni: { navigateTo: ReturnType<typeof vi.fn> } })
-      .uni;
-    await wrapper.vm.$nextTick();
-    expect(uni.navigateTo).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: "/pages/product/list?category_id=3",
-      })
-    );
-  });
-
-  it("Pinia 有待处理关键词 → navigateTo 产品列表（关键词由目标页 onShow 消费）", async () => {
+  it("即使 Pinia 有待处理关键词，分类页也不自行跳转", async () => {
     const store = useProductFilterStore();
     store.requestKeyword("9B");
     const wrapper = await mountCategory();
     const uni = (globalThis as { uni: { navigateTo: ReturnType<typeof vi.fn> } })
       .uni;
     await wrapper.vm.$nextTick();
-    expect(uni.navigateTo).toHaveBeenCalledWith(
-      expect.objectContaining({ url: "/pages/product/list" })
-    );
+    expect(uni.navigateTo).not.toHaveBeenCalled();
   });
 });

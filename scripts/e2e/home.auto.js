@@ -206,8 +206,8 @@ async function runAssertions(miniProgram, homeData, categoriesData) {
     `寝具型号应为 9B/9D/9P，实际 ${JSON.stringify(modelTexts)}`
   );
   await beddingCards[0].tap();
-  // 链路：首页 → switchTab 到「产品」tab（category 页）→ category 页经 Pinia 转发 navigateTo 产品列表页。
-  // 两级跳转需要时间，轮询等 path 落定，不要固定 sleep 后立即断言。
+  // 链路（Q17 修正）：首页 → navigateTo 直达产品列表页（不再经分类页中转，
+  // 否则页面栈留下分类页会让「返回」在分类页↔产品列表之间死循环）。
   let current = await miniProgram.currentPage();
   {
     const start = Date.now();
@@ -219,7 +219,7 @@ async function runAssertions(miniProgram, homeData, categoriesData) {
   }
   assert(
     current.path === "pages/product/list",
-    `点寝具 9B 应最终进入产品列表页（首页 switchTab → category 页 Pinia 转发 → navigateTo list），实际 ${current.path}`
+    `点寝具 9B 应直达产品列表页（首页 navigateTo → list），实际 ${current.path}`
   );
   const searchInput = await waitFor(current, ".pl-search-input", 8000);
   assert(searchInput, "产品列表页应存在搜索框（.pl-search-input）");
@@ -234,6 +234,34 @@ async function runAssertions(miniProgram, homeData, categoriesData) {
     `产品页搜索框应回填 keyword=9B，实际「${keywordValue}」`
   );
   console.log("[3] 寝具入口 3 个 + 点 9B 进入产品页 keyword=9B 通过");
+
+  // [3b] 返回栈回归（Q17 bug）：产品列表点返回必须直接回首页，
+  // 不能出现「首页 → 分类页 → 产品列表」导致返回落在分类页又被转发回产品列表的死循环。
+  await miniProgram.navigateBack();
+  // navigateBack 后页面切换有延迟，轮询等落定
+  let afterBack = await miniProgram.currentPage();
+  {
+    const start = Date.now();
+    while (Date.now() - start < 8000) {
+      afterBack = await miniProgram.currentPage();
+      if (afterBack && afterBack.path === "pages/index/index") break;
+      await sleep(400);
+    }
+  }
+  assert(
+    afterBack && afterBack.path === "pages/index/index",
+    `产品列表点返回应直接回首页，实际 ${afterBack && afterBack.path}`
+  );
+  {
+    // 再多等一会，确认没有被分类页「转发桥」二次跳走
+    await sleep(1500);
+    const stable = await miniProgram.currentPage();
+    assert(
+      stable && stable.path === "pages/index/index",
+      `返回后页面应稳定停在首页（无死循环），实际 ${stable && stable.path}`
+    );
+  }
+  console.log("[3b] 返回栈正确：产品列表 → 首页（无分类页中转、无死循环）通过");
 
   await miniProgram.switchTab("/pages/index/index");
   await sleep(1000);

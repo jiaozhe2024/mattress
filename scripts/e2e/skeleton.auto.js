@@ -15,6 +15,7 @@
  * 退出码：0=通过；1=断言失败；2=环境阻塞（DevTools 未登录/服务端口未开启等）
  */
 const fs = require("fs");
+const { launchAndReady, closeQuiet } = require("./_automationLaunch");
 const path = require("path");
 const { createRequire } = require("module");
 
@@ -65,10 +66,7 @@ function sleep(ms) {
 }
 
 async function runAutomator() {
-  const miniProgram = await automator.launch({
-    cliPath: CLI_PATH,
-    projectPath: MP_DIST,
-  });
+  const miniProgram = await launchAndReady(automator, CLI_PATH, MP_DIST);
   try {
     // 切换三个 tab 并断言 currentPage，逐页截图
     for (let i = 0; i < EXPECTED_TABS.length; i++) {
@@ -81,8 +79,10 @@ async function runAutomator() {
         `切换到 ${tab.label} 后 currentPage.path 应为 ${tab.pagePath}，实际 ${page && page.path}`
       );
       if (tab.pagePath === "pages/index/index") {
-        const fab = await page.$(".select-fab");
-        assert(fab, "首页应存在全局悬浮「选款」按钮（.select-fab）");
+        // IDE 2.02 起 automator 不穿透自定义组件边界（页面里的 <select-fab> 内部
+        // .select-fab 查不到），故断言页面侧宿主锚点 .select-fab-host。
+        const fabHost = await page.$(".select-fab-host");
+        assert(fabHost, "首页应存在全局悬浮「选款」按钮宿主（.select-fab-host）");
       }
       const shotPath = path.join(SHOT_DIR, `mp01-tab${i + 1}-${tab.label}.png`);
       await miniProgram.screenshot({ path: shotPath });
@@ -91,7 +91,7 @@ async function runAutomator() {
     }
     console.log("[3/3] MP-01 骨架验收全部通过");
   } finally {
-    await miniProgram.close();
+    await closeQuiet(miniProgram);
   }
 }
 

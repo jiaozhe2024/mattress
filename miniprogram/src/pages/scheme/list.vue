@@ -114,7 +114,7 @@ function coverSrcOf(card: SchemeCardView): string {
 
 <template>
   <view class="sl-page">
-    <WechatNav :title="LIST_NAV_TITLE" back />
+    <WechatNav :title="LIST_NAV_TITLE" back class="nav-anchor" :data-nav-title="LIST_NAV_TITLE" :data-nav-back="1" />
 
     <scroll-view class="sl-scroll" scroll-y :show-scrollbar="false">
       <!-- 加载态 -->

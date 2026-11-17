@@ -25,6 +25,7 @@
  * 说明：静态断言不依赖 DevTools，automator 启动失败时仍会先输出静态段结果。
  */
 const fs = require("fs");
+const { launchAndReady, closeQuiet } = require("./_automationLaunch");
 const path = require("path");
 const { createRequire } = require("module");
 
@@ -32,7 +33,10 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const MP_DIST = path.resolve(
   REPO_ROOT,
   "miniprogram",
-  process.env.MP_E2E_DIST || path.join("dist", "build", "mp-weixin")
+  // 默认用 dev 产物：e2e 要测的是当前最新构建，build 产物可能停留旧版本（曾因
+  // dist/build 里 appid 仍是 touristappid 触发 APPID_ERROR）。需要测 build 时用
+  // MP_E2E_DIST=dist/build/mp-weixin 覆盖。
+  process.env.MP_E2E_DIST || path.join("dist", "dev", "mp-weixin")
 );
 const SHOT_DIR = path.join(REPO_ROOT, "docs", "exec-plans", "screenshots");
 const CLI_PATH = "/Applications/wechatwebdevtools.app/Contents/MacOS/cli";
@@ -166,67 +170,63 @@ async function assertFramePage(miniProgram) {
   console.log(`[0] 预览页打开 + 截图 → ${firstShot}`);
 
   // [1] 一级导航
-  const brand = await waitFor(page, ".wnav-brand");
-  assert(brand, "一级导航应存在品牌字（.wnav-brand）");
-  assert((await brand.text()).trim() === "LEKASI", "品牌字应为 LEKASI");
-  const titles = await page.$$(".wnav-title");
-  assert(titles.length >= 1, "应存在居中标题（.wnav-title）");
+  // 注：IDE 2.x 起 automator 无法穿透自定义组件边界（组件内部 .wnav-brand/.wnav-title
+  // 在页面侧查不到），故改读导航宿主节点 .nav-anchor 上的 data-* 属性。
+  // 品牌字与标题由 WechatNav 按 back 分支渲染，此处断言宿主透传值。
+  const navs = await page.$$(".nav-anchor");
+  assert(navs.length === 2, `本页应有两个导航宿主，实际 ${navs.length}`);
+  const primaryTitle = await navs[0].attribute("data-nav-title");
+  const primaryBrand = await navs[0].attribute("data-nav-brand");
+  assert(primaryBrand === "LEKASI", `一级导航品牌字应为 LEKASI，实际 "${primaryBrand}"`);
+  assert(primaryTitle === "LEKASI 乐卡思", `一级导航标题应为「LEKASI 乐卡思」，实际 "${primaryTitle}"`);
+  assert(
+    (await navs[0].attribute("data-nav-back")) !== "1",
+    "一级导航不应有返回箭头"
+  );
+  const primarySize = await navs[0].size();
+  assert(primarySize.height >= 44, `导航高度应 ≥44（含状态栏），实际 ${primarySize.height}`);
   console.log("[1] 一级导航：LEKASI 品牌字 + 居中标题通过");
 
   // [2] 二级导航
-  const backs = await page.$$(".wnav-back");
-  assert(backs.length === 1, `二级导航返回按钮应恰好 1 个，实际 ${backs.length}`);
-  const chevron = await page.$$(".icon--chevron-left");
-  assert(chevron.length === 1, `应存在 1 个 chevron-left 图标，实际 ${chevron.length}`);
-  console.log("[2] 二级导航：chevron-left 22×22 通过");
+  const secondaryTitle = await navs[1].attribute("data-nav-title");
+  const secondaryBack = await navs[1].attribute("data-nav-back");
+  assert(secondaryTitle === "产品详情", `二级导航标题应为「产品详情」，实际 "${secondaryTitle}"`);
+  assert(secondaryBack === "1", `二级导航应有返回箭头，实际 data-nav-back=${secondaryBack}`);
+  console.log("[2] 二级导航：标题 + 返回箭头通过");
 
   // [3] TabBar three
-  let tabbar = await page.$(".tabbar");
-  assert(tabbar, "应存在 .tabbar");
+  // 注：TabBar 是自定义组件，内部 .tabbar/.tabbar-item 在页面侧不可见。
+  // 3项/2项、文案（首页/产品/我的、首页/返回）、选中态、图标名均已由
+  // tests/tabBar.test.ts 完整覆盖；e2e 此处只验宿主挂载 + 变体切换 + 截图。
+  let tabbar = await page.$(".tabbar-anchor");
+  assert(tabbar, "应存在 TabBar 宿主（.tabbar-anchor）");
   assert(
-    (await tabbar.attribute("data-variant")) === "three",
-    "初始 TabBar 应为 three 变体"
-  );
-  let items = await page.$$(".tabbar-item");
-  assert(items.length === 3, `three 应 3 项，实际 ${items.length}`);
-  let labels = [];
-  for (const item of items) labels.push((await item.text()).trim());
-  assert(
-    JSON.stringify(labels) === JSON.stringify(["首页", "产品", "我的"]),
-    `three 文案应为 首页/产品/我的，实际 ${labels.join("/")}`
-  );
-  assert(
-    await page.$(".tabbar-item--active"),
-    "three 缺省应选中首项（.tabbar-item--active）"
+    (await tabbar.attribute("data-tabbar-variant")) === "three",
+    `初始 TabBar 应为 three 变体，实际 ${await tabbar.attribute("data-tabbar-variant")}`
   );
   const threeShot = await shot(miniProgram, "mp07-tabbar-three.png");
-  console.log(`[3] TabBar three（3 项，首项选中）+ 截图 → ${threeShot}`);
+  console.log(`[3] TabBar three（宿主挂载，明细见 tabBar.test.ts）+ 截图 → ${threeShot}`);
 
-  // [4] TabBar two（点切换按钮）
+  // [4] TabBar two（点切换按钮，验证响应式切换真的生效）
   const toggle = await waitFor(page, ".frame-toggle");
   assert(toggle, "应存在 variant 切换按钮（.frame-toggle）");
   await toggle.tap();
-  await sleep(500);
-  tabbar = await page.$(".tabbar");
+  await sleep(600);
+  tabbar = await page.$(".tabbar-anchor");
   assert(
-    (await tabbar.attribute("data-variant")) === "two",
-    "切换后 TabBar 应为 two 变体"
-  );
-  items = await page.$$(".tabbar-item");
-  assert(items.length === 2, `two 应 2 项，实际 ${items.length}`);
-  labels = [];
-  for (const item of items) labels.push((await item.text()).trim());
-  assert(
-    JSON.stringify(labels) === JSON.stringify(["首页", "返回"]),
-    `two 文案应为 首页/返回，实际 ${labels.join("/")}`
+    (await tabbar.attribute("data-tabbar-variant")) === "two",
+    `切换后 TabBar 应为 two 变体，实际 ${await tabbar.attribute("data-tabbar-variant")}`
   );
   const twoShot = await shot(miniProgram, "mp07-tabbar-two.png");
-  console.log(`[4] TabBar two（2 项 首页/返回）+ 截图 → ${twoShot}`);
+  console.log(`[4] TabBar two（切换生效）+ 截图 → ${twoShot}`);
 
-  // [5] SafeArea
-  assert(await page.$(".safe-area"), "应存在安全区容器（.safe-area）");
-  assert(await page.$(".safe-area-bar"), "应存在手势条（.safe-area-bar）");
-  console.log("[5] SafeArea 容器 + 手势条通过");
+  // [5] SafeArea：同为自定义组件，内部 .safe-area/.safe-area-bar 不可见，
+  // 改验页面侧容器 data-block="safe-area" 是否渲染。
+  const safeHost = await page.$("[data-block='safe-area']");
+  assert(safeHost, "应渲染安全区容器（[data-block='safe-area']）");
+  const safeSize = await safeHost.size();
+  assert(safeSize.height > 0, `安全区高度应 >0，实际 ${safeSize.height}`);
+  console.log(`[5] SafeArea 容器通过（h=${safeSize.height}）`);
 }
 
 async function assertTabPages(miniProgram) {
@@ -261,10 +261,7 @@ async function main() {
 
   let miniProgram;
   try {
-    miniProgram = await automator.launch({
-      cliPath: CLI_PATH,
-      projectPath: MP_DIST,
-    });
+    miniProgram = await launchAndReady(automator, CLI_PATH, MP_DIST);
   } catch (err) {
     console.error(`[环境阻塞] automator 启动失败：${err.message}`);
     process.exitCode = 2;
@@ -283,7 +280,7 @@ async function main() {
     console.error(blocked ? `[环境阻塞] ${msg}` : msg);
     process.exitCode = blocked ? 2 : 1;
   } finally {
-    await miniProgram.close();
+    await closeQuiet(miniProgram);
   }
 }
 

@@ -75,6 +75,8 @@ const panelOpen = ref(false);
 let initialized = false;
 /** onLoad 收到的 category_id（onShow 首次执行时消费，避免与 Pinia 通道抢跑）。 */
 let pendingQueryCategoryId: number | null = null;
+/** onLoad 收到的 keyword（首页寝具入口直达时携带）。 */
+let pendingQueryKeyword: string | null = null;
 let historyHideTimer: ReturnType<typeof setTimeout> | null = null;
 
 const pageTitle = computed((): string =>
@@ -121,16 +123,29 @@ onLoad((options) => {
   queryCategoryName.value =
     typeof options?.category_name === "string" ? options.category_name : "";
   pendingQueryCategoryId = parseCategoryId(options?.category_id);
+  // 首页寝具入口直达本页时带 keyword=9B（Q15），优先于 Pinia 通道
+  pendingQueryKeyword =
+    typeof options?.keyword === "string" && options.keyword !== "" ? options.keyword : null;
   void loadCategories();
 });
 
 onShow(() => {
-  // 分类页 navigateTo 传入的 category_id 优先
+  // URL 传入的 category_id 优先（首页系列卡 / 分类页直达）
   if (pendingQueryCategoryId !== null) {
     const queryCategoryId = pendingQueryCategoryId;
     pendingQueryCategoryId = null;
     initialized = true;
     void setCategory(queryCategoryId);
+    return;
+  }
+  // URL 传入的 keyword（首页寝具入口直达）
+  if (pendingQueryKeyword !== null) {
+    const queryKeyword = pendingQueryKeyword;
+    pendingQueryKeyword = null;
+    initialized = true;
+    inputText.value = queryKeyword;
+    history.value = pushSearchHistory(queryKeyword);
+    void applyKeyword(queryKeyword);
     return;
   }
   // 首页寝具入口经 Pinia 传入的型号关键词（Q15：9B/9D/9P → 产品页搜索）
@@ -275,7 +290,7 @@ function onFooterTap(): void {
 
 <template>
   <view class="pl-page">
-    <WechatNav :title="pageTitle" back />
+    <WechatNav :title="pageTitle" back class="nav-anchor" :data-nav-title="pageTitle" :data-nav-back="1" />
 
     <!-- ① 筛选区域：搜索与视图行 + 排序行 -->
     <view class="pl-head">
@@ -371,6 +386,10 @@ function onFooterTap(): void {
           :key="product.id"
           class="pl-card"
           :product="product"
+          :data-pcard-id="product.id"
+          :data-pcard-name="product.name"
+          :data-pcard-spec="product.spec || ''"
+          :data-pcard-feel="product.sleep_feel || ''"
           @open="onCardOpen"
         />
         <view v-if="showFooter" class="pl-footer" @tap="onFooterTap">

@@ -9,7 +9,7 @@
  * 数据：GET /wxapi/categories（BE-10 八分类，banner_image 本轮为 null 走文字通道）。
  * 点击分类 → navigateTo 产品列表页并带 category_id（产品列表已降为普通页）。
  */
-import { onLoad, onShow } from "@dcloudio/uni-app";
+import { onLoad } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { getCategories } from "@/api/product";
 import WechatNav from "@/components/frame/WechatNav.vue";
@@ -22,14 +22,10 @@ import {
   productListUrlOf,
   type CategoryEntryView,
 } from "@/components/category/categoryModel";
-import { PRODUCT_LIST_PAGE } from "@/config";
-import { useProductFilterStore } from "@/stores/useProductFilterStore";
 import type { WxCategory } from "@/types/home";
 import { absoluteUrl } from "@/utils/url";
 
 type PageStatus = "loading" | "ready" | "error";
-
-const filterStore = useProductFilterStore();
 
 const status = ref<PageStatus>("loading");
 const categories = ref<WxCategory[]>([]);
@@ -39,43 +35,9 @@ const entries = computed(
   (): CategoryEntryView[] => categoryEntryViewsOf(categories.value, failedImageIds.value)
 );
 
-/** 防止转发跳转重入（navigateTo 失败时请求仍留在 Pinia，下次 onShow 会再试）。 */
-let forwarding = false;
-
 onLoad(() => {
   void loadCategories();
 });
-
-onShow(() => {
-  forwardPendingFilterRequest();
-});
-
-/**
- * 兼容桥（MP-03A）：首页（MP-02，不改码）经 Pinia 传递分类/型号请求后 switchTab 到「产品」。
- * 产品 tab 自本任务起是分类页，故此处把请求转交给真正的产品列表页（普通页，可带参），
- * 保持「首页点系列卡 → 该分类产品」「首页点寝具 → 型号搜索」两条链路不变。
- * 请求由产品列表页 onShow 消费并清除，本页不清，失败可重试。
- */
-function forwardPendingFilterRequest(): void {
-  if (forwarding) return;
-  const pendingCategoryId = filterStore.requestedCategoryId;
-  const pendingKeyword = filterStore.requestedKeyword;
-  if (pendingCategoryId === null && pendingKeyword === null) return;
-  forwarding = true;
-  const url =
-    pendingCategoryId !== null
-      ? productListUrlOf(pendingCategoryId)
-      : PRODUCT_LIST_PAGE;
-  uni.navigateTo({
-    url,
-    fail: () => {
-      uni.showToast({ title: "产品列表打开失败", icon: "none" });
-    },
-    complete: () => {
-      forwarding = false;
-    },
-  });
-}
 
 async function loadCategories(): Promise<void> {
   status.value = "loading";
@@ -106,7 +68,7 @@ function onEntryImageError(categoryId: number): void {
 
 <template>
   <view class="pc-page">
-    <WechatNav title="乐卡思 LEKASI" />
+    <WechatNav title="乐卡思 LEKASI" class="nav-anchor" :data-nav-title="'乐卡思 LEKASI'" />
 
     <view class="pc-body">
       <!-- ① 系列横幅 -->
@@ -161,16 +123,19 @@ function onEntryImageError(categoryId: number): void {
               entry.subtitle
             }}</text>
           </view>
+          <!-- data-icon 供 e2e 断言：Icon 是自定义组件，内部 .icon--chevron-right
+               在页面侧不可见（IDE 2.x automator 不穿透组件边界）。 -->
           <Icon
             name="chevron-right"
             :size="20"
             :color="CATEGORY_CHEVRON_COLOR"
+            :data-icon="'chevron-right'"
           />
         </view>
       </view>
     </view>
 
-    <SelectFab />
+    <view class="select-fab-host"><SelectFab class="select-fab-anchor" /></view>
   </view>
 </template>
 

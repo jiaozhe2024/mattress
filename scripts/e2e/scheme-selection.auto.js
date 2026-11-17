@@ -39,6 +39,7 @@ const PAGE_PATH = "pages/scheme/selection";
 const LAUNCH_TIMEOUT_MS = 45000;
 const WATCHDOG_TIMEOUT_MS = 240000;
 const { resolveAutomationPort } = require("./_automationPort");
+const { launchAndReady, closeQuiet, navInfo, sleep: sleepShared, withTimeout: withTimeoutShared } = require("./_automationLaunch");
 
 /**
  * 预检 DevTools 自动化端口。
@@ -263,10 +264,10 @@ async function runAssertions(miniProgram) {
   const page = await miniProgram.currentPage();
   assert(page && page.path === PAGE_PATH, `应落在选品页，实际 ${page && page.path}`);
 
-  // 导航
-  const navText = await waitForText(page, ".wnav-title");
-  chk("导航标题 LEKASI 乐卡思", navText === "LEKASI 乐卡思", `got="${navText}"`);
-  chk("二级页返回箭头", !!(await page.$(".wnav-back")));
+  // 导航（组件内部节点不可达，读宿主 data-* 属性）
+  const nav = await navInfo(page);
+  chk("导航标题 LEKASI 乐卡思", nav.title === "LEKASI 乐卡思", `got="${nav.title}"`);
+  chk("二级页返回箭头", nav.back === true);
 
   // 分类栏
   const cats = await page.$$(".ss-cat-item");
@@ -415,7 +416,7 @@ fs.mkdirSync(SHOT_DIR, { recursive: true });
   let dy = { pass: 0, fail: 0 };
   try {
     miniProgram = await withTimeout(
-      automator.launch({ cliPath: CLI_PATH, projectPath: MP_DIST }),
+      launchAndReady(automator, CLI_PATH, MP_DIST),
       LAUNCH_TIMEOUT_MS,
       "automator.launch"
     );
@@ -436,7 +437,7 @@ fs.mkdirSync(SHOT_DIR, { recursive: true });
     process.exitCode = blocked ? 2 : 1;
   } finally {
     if (miniProgram) {
-      await withTimeout(miniProgram.close(), 15000, "miniProgram.close").catch(() => {});
+      await closeQuiet(miniProgram);
     }
   }
 

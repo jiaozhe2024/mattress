@@ -26,7 +26,7 @@ import {
   type QuickEntryKey,
   type SeriesCardView,
 } from "@/components/home/homeModel";
-import { CUSTOMER_SERVICE, PRODUCT_LIST_TAB } from "@/config";
+import { CUSTOMER_SERVICE, PRODUCT_LIST_PAGE, PRODUCT_LIST_TAB } from "@/config";
 import { useProductFilterStore } from "@/stores/useProductFilterStore";
 import type { WxBanner, WxCategory } from "@/types/home";
 import { resolveBannerTarget } from "@/utils/jump";
@@ -94,16 +94,41 @@ function goProductList(): void {
   uni.switchTab({ url: PRODUCT_LIST_TAB });
 }
 
-function goCategory(categoryId: number): void {
-  // 产品列表是 tabBar 页，switchTab 无法带参 → Pinia 传分类（核心约定 9）
-  filterStore.requestCategory(categoryId);
-  goProductList();
+/**
+ * 进入指定分类的产品列表。
+ *
+ * 为什么直接 navigateTo 产品列表页（不经 switchTab → 分类页 Pinia 转发）：
+ * 旧实现在页面栈里塞进「分类页」这一层，导致用户点返回先回分类页、分类页又因
+ * pending 请求再次跳回产品列表，形成死循环。产品列表页已支持 onLoad 的
+ * category_id / category_name 参数，直达即可让返回正确回到首页。
+ *
+ * @param categoryId 分类 id
+ * @param title 可选分类名；缺省时产品列表页会从 categories 接口自行解析标题
+ */
+function goCategory(categoryId: number, title?: string): void {
+  const nameQuery =
+    title === undefined || title === ""
+      ? ""
+      : `&category_name=${encodeURIComponent(title)}`;
+  uni.navigateTo({
+    url: `${PRODUCT_LIST_PAGE}?category_id=${categoryId}${nameQuery}`,
+    fail: () => {
+      // 兜底：极端情况（页面未注册等）回退到分类 tab
+      filterStore.requestCategory(categoryId);
+      goProductList();
+    },
+  });
 }
 
+/** 寝具入口不是分类：按型号关键词搜索产品（Q15 决议），同样直达产品列表页。 */
 function goBeddingModel(model: string): void {
-  // 寝具入口不是分类：按型号关键词搜索产品（Q15 决议）
-  filterStore.requestKeyword(model);
-  goProductList();
+  uni.navigateTo({
+    url: `${PRODUCT_LIST_PAGE}?keyword=${encodeURIComponent(model)}`,
+    fail: () => {
+      filterStore.requestKeyword(model);
+      goProductList();
+    },
+  });
 }
 
 function goNews(): void {
@@ -198,7 +223,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
 
 <template>
   <view class="home">
-    <WechatNav title="乐卡思 LEKASI" />
+    <WechatNav title="乐卡思 LEKASI" class="nav-anchor" :data-nav-title="'乐卡思 LEKASI'" />
 
     <view v-if="pageStatus === 'loading'" class="home-state">
       <text class="home-state-text">加载中…</text>
@@ -261,7 +286,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
             v-for="card in seriesCards"
             :key="card.id"
             class="home-series-card"
-            @tap="goCategory(card.id)"
+            @tap="goCategory(card.id, card.title)"
           >
             <image
               v-if="card.imageSrc"

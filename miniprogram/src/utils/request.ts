@@ -19,6 +19,21 @@ type ReloginHandler = () => Promise<void>;
 let reloginHandler: ReloginHandler | null = null;
 let reloginInFlight: Promise<boolean> | null = null;
 
+/**
+ * 启动登录就绪 Promise。
+ *
+ * 为什么需要：App.vue 的 onLaunch 里 silentLogin() 是异步且不阻塞的，而首页
+ * 组件的 onLoad 会立刻发请求，此刻 storage 里还没有 token，于是必然 401。
+ * 让业务请求先 await 这个 Promise，可以避免「首屏请求必失败 + 依赖 401 重试」
+ * 的脆弱链路（保存等写操作在重试链路上曾出现「缺少登录凭证」）。
+ */
+let authReady: Promise<unknown> | null = null;
+
+/** 由 App.vue 在启动时注入：首个业务请求会等它落定（成功或失败都不阻塞）。 */
+export function setAuthReady(promise: Promise<unknown>): void {
+  authReady = promise;
+}
+
 export function setReloginHandler(handler: ReloginHandler): void {
   reloginHandler = handler;
 }
@@ -95,6 +110,13 @@ async function request<T>(
   config: RequestConfig & { url: string; method: "GET" | "POST" | "PUT" | "DELETE" },
   isRetry = false
 ): Promise<T> {
+  // 首个业务请求等启动登录落定：避免「无 token 必 401」的不必要往返。
+  // 失败也不阻塞（后端未起时仍让请求走下去，由错误处理兜底）。
+  if (authReady !== null) {
+    const pending = authReady;
+    authReady = null;
+    await pending.catch(() => undefined);
+  }
   const token = getToken();
   const header: Record<string, string> = { ...(config.header as Record<string, string> | undefined) };
   if (token) {

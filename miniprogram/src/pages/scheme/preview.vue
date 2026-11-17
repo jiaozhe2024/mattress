@@ -135,7 +135,7 @@ onShareAppMessage((res) => {
 
 <template>
   <view class="sp-page">
-    <WechatNav :title="PREVIEW_NAV_TITLE" back />
+    <WechatNav :title="PREVIEW_NAV_TITLE" back class="nav-anchor" :data-nav-title="PREVIEW_NAV_TITLE" :data-nav-back="1" />
 
     <scroll-view class="sp-scroll" scroll-y :show-scrollbar="false">
       <!-- 加载 / 错误 / 空 -->

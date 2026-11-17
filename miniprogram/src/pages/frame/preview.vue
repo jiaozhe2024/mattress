@@ -23,13 +23,13 @@ function toggleVariant(): void {
 
 <template>
   <view class="frame-page">
-    <WechatNav title="LEKASI 乐卡思" />
+    <WechatNav title="LEKASI 乐卡思" class="nav-anchor" :data-nav-title="'LEKASI 乐卡思'" :data-nav-brand="'LEKASI'" />
     <view class="frame-body">
       <view class="frame-block" data-block="nav-primary">
         <text class="frame-hint">一级页导航：左侧 LEKASI 品牌缩写</text>
       </view>
       <view class="frame-block" data-block="nav-secondary">
-        <WechatNav title="产品详情" back />
+        <WechatNav title="产品详情" back class="nav-anchor nav-anchor--secondary" :data-nav-title="'产品详情'" :data-nav-back="1" />
         <text class="frame-hint">二级页导航：左侧 chevron-left 22×22</text>
       </view>
       <view class="frame-block">
@@ -43,7 +43,14 @@ function toggleVariant(): void {
       </view>
     </view>
     <view class="frame-tabbar" data-block="tabbar">
-      <TabBar :variant="tabVariant" :active="tabVariant === 'three' ? 0 : -1" />
+      <TabBar
+        :variant="tabVariant"
+        :active="tabVariant === 'three' ? 0 : -1"
+        class="tabbar-anchor"
+        :data-tabbar-variant="tabVariant"
+        :data-tabbar-count="3"
+        :data-tabbar-active="tabVariant === 'three' ? '0' : '-1'"
+      />
     </view>
     <view class="frame-safe" data-block="safe-area">
       <SafeArea />

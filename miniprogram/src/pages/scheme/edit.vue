@@ -236,7 +236,7 @@ function onAction(button: SchemeActionButtonConfig): void {
 
 <template>
   <view class="se-page">
-    <WechatNav :title="EDIT_NAV_TITLE" back />
+    <WechatNav :title="EDIT_NAV_TITLE" back class="nav-anchor" :data-nav-title="EDIT_NAV_TITLE" :data-nav-back="1" />
 
     <scroll-view class="se-scroll" scroll-y :show-scrollbar="false">
       <view class="se-body">
