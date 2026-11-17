@@ -9,6 +9,15 @@ __pycache__/
 *.pyc
 .venv/
 
+# 环境变量（含密钥，永不入库）
+# 兜底规则：backend/ miniprogram/ 等子目录的 .gitignore 各管自己那棵子树，
+# 根层必须再兜一次，否则将来在别处新增 .env 会被 git add -A 带进库。
+# 两个例外是给新人抄的模板与测试配置，应当入库。
+.env
+.env.*
+!.env.example
+!.env.test
+
 # 构建产物
 miniprogram/dist/
 backend/admin/dist/
