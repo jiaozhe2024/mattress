@@ -11,7 +11,7 @@
  * 但滚动时保持常驻（与 MP-01 既有骨架 e2e「悬浮按钮」语义一致）。
  */
 import { computed } from "vue";
-import { PRODUCT_LIST_TAB, SELECTION_PAGE } from "@/config";
+import { PRODUCT_LIST_TAB, SCHEME_EDIT_PAGE, SELECTION_PAGE } from "@/config";
 import { useSelectionStore } from "@/stores/useSelectionStore";
 
 const store = useSelectionStore();
@@ -20,11 +20,22 @@ const badgeText = computed((): string =>
   store.selectedCount > 99 ? "99+" : String(store.selectedCount)
 );
 
+/**
+ * 选款入口分流（用户 2026-11-17 决策）：
+ *   - 已选 >0（store 不为空）→ 选品页，让用户继续在已有选品上增减；
+ *   - 已选 =0 → 方案编辑页空态（design/references/plan-01-empty.png），
+ *     由用户在那里「添加产品」再进入选品页，避免一进来就是空选品的选品页。
+ *
+ * 注意：不再「navigateTo 失败就 switchTab 产品列表」——那是页面未落地时的历史兜底，
+ * 现在两个目标页都已存在；且产品列表是普通页而非 tab（MP-03A 起 tab 是分类页），
+ * switchTab 到 /pages/product/category 会打断用户意图。
+ */
 function goSelection(): void {
-  // 目标页 /pages/scheme/selection 由 MP-05 落地；此前回退到产品列表 tab（选品发生地）
+  const target = store.selectedCount > 0 ? SELECTION_PAGE : SCHEME_EDIT_PAGE;
   uni.navigateTo({
-    url: SELECTION_PAGE,
+    url: target,
     fail: () => {
+      // 兜底：目标页未注册等极端情况，回产品分类 tab（选品发生地）
       uni.switchTab({ url: PRODUCT_LIST_TAB });
     },
   });

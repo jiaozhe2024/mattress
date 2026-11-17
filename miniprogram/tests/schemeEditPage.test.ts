@@ -63,6 +63,7 @@ function uniStub(): Record<string, unknown> {
     }),
     getSystemInfoSync: () => ({ statusBarHeight: 44, windowWidth: 375 }),
     navigateTo: vi.fn(),
+    redirectTo: vi.fn(),
     navigateBack: vi.fn(),
     showToast: vi.fn(),
   };
@@ -70,6 +71,7 @@ function uniStub(): Record<string, unknown> {
 
 function uni(): {
   navigateTo: ReturnType<typeof vi.fn>;
+  redirectTo: ReturnType<typeof vi.fn>;
   showToast: ReturnType<typeof vi.fn>;
 } {
   return (globalThis as { uni: never }).uni;
@@ -92,12 +94,16 @@ async function typeTitle(
 beforeEach(() => {
   setActivePinia(createPinia());
   (globalThis as { uni?: unknown }).uni = uniStub();
+  (globalThis as Record<string, unknown>).getCurrentPages = () => [
+    { route: "pages/index/index" },
+  ];
   mockCreate.mockResolvedValue(detailOf(42, "主卧舒适好眠方案"));
   mockUpdate.mockResolvedValue(detailOf(7, "主卧舒适好眠方案"));
 });
 
 afterEach(() => {
   delete (globalThis as { uni?: unknown }).uni;
+  delete (globalThis as Record<string, unknown>).getCurrentPages;
   vi.clearAllMocks();
 });
 
@@ -284,7 +290,8 @@ describe("方案编辑页 · 交互", () => {
     });
     expect(mockUpdate).not.toHaveBeenCalled();
     expect(store.currentSchemeId).toBe(42);
-    expect(uni().navigateTo).toHaveBeenCalledWith(
+    // 保存后进方案列表，用 redirectTo 替换编辑页（navigateTo 会叠层）
+    expect(uni().redirectTo).toHaveBeenCalledWith(
       expect.objectContaining({ url: SCHEME_LIST_PAGE })
     );
   });
@@ -340,19 +347,22 @@ describe("方案编辑页 · 交互", () => {
     expect(uni().navigateTo).not.toHaveBeenCalled();
   });
 
-  it("我的方案 → 跳方案列表页（MP-05C 未建时 fail toast 兜底）", async () => {
+  it("我的方案 → redirectTo 方案列表页（替换当前页，避免叠层）", async () => {
     const wrapper = await mountPage();
     await wrapper.findAll(".se-action")[0].trigger("tap");
 
-    expect(uni().navigateTo).toHaveBeenCalledWith(
+    // 必须用 redirectTo：navigateTo 会让「编辑→列表→编辑」不断叠层，
+    // 列表返回时落在上一个编辑页而不是首页。
+    expect(uni().redirectTo).toHaveBeenCalledWith(
       expect.objectContaining({ url: SCHEME_LIST_PAGE })
     );
+    expect(uni().navigateTo).not.toHaveBeenCalled();
   });
 
-  it("方案列表页未建（navigateTo fail）→ toast 兜底", async () => {
+  it("方案列表页未建（redirectTo fail）→ toast 兜底", async () => {
     (globalThis as { uni?: unknown }).uni = {
       ...uniStub(),
-      navigateTo: vi.fn((options: { fail?: () => void }) => options.fail?.()),
+      redirectTo: vi.fn((options: { fail?: () => void }) => options.fail?.()),
     };
     const wrapper = await mountPage();
     await wrapper.findAll(".se-action")[0].trigger("tap");

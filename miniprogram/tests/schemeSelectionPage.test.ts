@@ -98,20 +98,32 @@ async function mountPage(): Promise<ReturnType<typeof mount>> {
 
 function uni(): {
   navigateTo: ReturnType<typeof vi.fn>;
+  navigateBack: ReturnType<typeof vi.fn>;
   showToast: ReturnType<typeof vi.fn>;
 } {
   return (globalThis as { uni: never }).uni;
 }
 
+/**
+ * 页面栈桩：onOk 会读 getCurrentPages() 判断上一页是否为编辑页。
+ * 这里默认「上一页是首页」，即选款 FAB 进入选品页的场景（应 navigateTo 新编辑页）。
+ */
+function stubPageStack(routes: string[]): void {
+  (globalThis as Record<string, unknown>).getCurrentPages = () =>
+    routes.map((route) => ({ route }));
+}
+
 beforeEach(() => {
   setActivePinia(createPinia());
   (globalThis as { uni?: unknown }).uni = uniStub();
+  stubPageStack(["pages/index/index", "pages/scheme/selection"]);
   mockGetCategories.mockResolvedValue(CATEGORIES);
   mockGetProducts.mockResolvedValue(makePage(PRODUCTS));
 });
 
 afterEach(() => {
   delete (globalThis as { uni?: unknown }).uni;
+  delete (globalThis as Record<string, unknown>).getCurrentPages;
   vi.clearAllMocks();
   vi.useRealTimers();
 });
@@ -246,7 +258,23 @@ describe("选品页交互（核心约定 9：全程走 useSelectionStore）", ()
     expect(wrapper.find(".ss-count").text()).toBe("已选：1");
   });
 
-  it("点 OK → navigateTo 方案编辑页，选品保留在 Pinia", async () => {
+  it("点 OK（上一页是编辑页）→ navigateBack 回该编辑页，不叠层", async () => {
+    stubPageStack(["pages/index/index", "pages/scheme/edit", "pages/scheme/selection"]);
+    const wrapper = await mountPage();
+    const store = useSelectionStore();
+    await wrapper.findAll(".ss-card-action")[0].trigger("tap");
+    await flushPromises();
+
+    await wrapper.find(".ss-ok").trigger("tap");
+
+    // 编辑页「添加产品」进来时，返回必须回到该编辑页本身（navigateBack），
+    // 否则会再压一个编辑页，形成「编辑→选品→编辑」叠层。
+    expect(uni().navigateBack).toHaveBeenCalled();
+    expect(uni().navigateTo).not.toHaveBeenCalled();
+    expect(store.selectedCount).toBe(1);
+  });
+
+  it("点 OK（从首页选款进入）→ navigateTo 新编辑页，选品保留在 Pinia", async () => {
     const wrapper = await mountPage();
     const store = useSelectionStore();
     await wrapper.findAll(".ss-card-action")[0].trigger("tap");

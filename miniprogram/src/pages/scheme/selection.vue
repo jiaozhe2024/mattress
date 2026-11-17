@@ -205,10 +205,31 @@ function onOpenDetail(product: WxProductListItem): void {
 }
 
 /**
- * OK → 方案编辑页（MP-05B 未落地前 navigateTo fail → toast 兜底）。
- * 选品始终留在 Pinia，跳转失败不丢状态。
+ * OK → 进方案编辑页。
+ *
+ * 选品页有两种入口，必须区别对待：
+ *   ① 编辑页「添加产品」→ 选品页：上一页就是编辑页，用 navigateBack 回去，
+ *      否则会形成「编辑页→选品页→编辑页」叠层，返回时状态错乱。
+ *   ② 选款 FAB（store 非空）→ 选品页：上一个是首页/分类页，navigateBack 会
+ *      退回首页导致选品无处提交，故必须 navigateTo 一个新编辑页。
  */
 function onOk(): void {
+  const pages = getCurrentPages();
+  const prev = pages.length > 1 ? pages[pages.length - 2] : null;
+  const prevRoute = prev && typeof prev.route === "string" ? `/${prev.route}` : "";
+  if (prevRoute === SCHEME_EDIT_PAGE) {
+    uni.navigateBack({
+      fail: () => {
+        uni.navigateTo({
+          url: SCHEME_EDIT_PAGE,
+          fail: () => {
+            uni.showToast({ title: SCHEME_EDIT_PENDING_TOAST, icon: "none" });
+          },
+        });
+      },
+    });
+    return;
+  }
   uni.navigateTo({
     url: SCHEME_EDIT_PAGE,
     fail: () => {

@@ -4,7 +4,7 @@ import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import SelectFab from "@/components/frame/SelectFab.vue";
 import { useSelectionStore } from "@/stores/useSelectionStore";
-import { SELECTION_PAGE } from "@/config";
+import { SCHEME_EDIT_PAGE, SELECTION_PAGE } from "@/config";
 import type { Product } from "@/types/product";
 
 function makeProduct(id: number): Product {
@@ -60,7 +60,32 @@ describe("SelectFab（V3：64×42 胶囊，spec.md §5.1 ⑤）", () => {
     expect(wrapper.find(".select-fab-badge-text").text()).toBe("99+");
   });
 
-  it("点击跳转选品页；页面未落地时回退产品列表 tab", async () => {
+  it("store 为空 → 进方案编辑页空态（plan-01-empty.png）", async () => {
+    const calls: string[] = [];
+    (globalThis as { uni?: unknown }).uni = {
+      navigateTo: (options: { url: string }) => calls.push(`navigateTo:${options.url}`),
+      switchTab: (options: { url: string }) => calls.push(`switchTab:${options.url}`),
+    };
+    const wrapper = mountFab();
+    await wrapper.find(".select-fab").trigger("tap");
+    // 空选品时不应把用户直接扔进选品页，先进编辑页空态
+    expect(calls).toEqual([`navigateTo:${SCHEME_EDIT_PAGE}`]);
+  });
+
+  it("store 非空 → 进选品页继续增减", async () => {
+    const calls: string[] = [];
+    (globalThis as { uni?: unknown }).uni = {
+      navigateTo: (options: { url: string }) => calls.push(`navigateTo:${options.url}`),
+      switchTab: (options: { url: string }) => calls.push(`switchTab:${options.url}`),
+    };
+    const store = useSelectionStore();
+    store.addProduct(makeProduct(1));
+    const wrapper = mountFab();
+    await wrapper.find(".select-fab").trigger("tap");
+    expect(calls).toEqual([`navigateTo:${SELECTION_PAGE}`]);
+  });
+
+  it("目标页不可用（navigateTo fail）→ 回产品分类 tab 兜底", async () => {
     const calls: string[] = [];
     (globalThis as { uni?: unknown }).uni = {
       navigateTo: (options: { url: string; fail?: () => void }) => {
@@ -72,7 +97,7 @@ describe("SelectFab（V3：64×42 胶囊，spec.md §5.1 ⑤）", () => {
     const wrapper = mountFab();
     await wrapper.find(".select-fab").trigger("tap");
     expect(calls).toEqual([
-      `navigateTo:${SELECTION_PAGE}`,
+      `navigateTo:${SCHEME_EDIT_PAGE}`,
       "switchTab:/pages/product/category",
     ]);
   });

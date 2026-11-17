@@ -212,8 +212,15 @@ async function onPreview(): Promise<void> {
   });
 }
 
+/**
+ * 「我的方案」→ 方案列表页。
+ *
+ * 用 redirectTo 替换当前编辑页：编辑页 → 列表 → 点方案又进编辑页，
+ * 用 navigateTo 会不断叠层（列表返回时落在上一个编辑页而不是首页）。
+ * redirectTo 让列表的返回直接回到进入编辑页之前的页面（首页/分类页）。
+ */
 function navigateToSchemeList(): void {
-  uni.navigateTo({
+  uni.redirectTo({
     url: SCHEME_LIST_PAGE,
     fail: () => {
       uni.showToast({ title: SCHEME_LIST_PENDING_TOAST, icon: "none" });

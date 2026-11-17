@@ -38,6 +38,7 @@ const localRequire = createRequire(
   require.resolve(path.join("..", "..", "miniprogram", "package.json"))
 );
 const automator = localRequire("miniprogram-automator");
+const { launchAndReady, closeQuiet } = require("./_automationLaunch");
 
 function assert(cond, message) {
   if (!cond) {
@@ -237,20 +238,39 @@ async function runAssertions(miniProgram, homeData, categoriesData) {
 
   // [3b] 返回栈回归（Q17 bug）：产品列表点返回必须直接回首页，
   // 不能出现「首页 → 分类页 → 产品列表」导致返回落在分类页又被转发回产品列表的死循环。
-  await miniProgram.navigateBack();
-  // navigateBack 后页面切换有延迟，轮询等落定
+  // 用页面侧 wx.navigateBack，不用 miniProgram.navigateBack()：
+  // 后者内部走 changeRoute（先 currentPage 再调 wx.navigateBack 再 sleep 3s），
+  // 与模拟器路由栈有竞态，实测会出现返回后落到 tab 页（pages/product/category）的假象。
+  // 断言以「页面栈长度变短」为准，比只看 currentPage 更可靠（currentPage 在过渡期
+  // 可能仍返回旧页面）。
+  const stackBefore = await miniProgram.evaluate(() =>
+    getCurrentPages().map((p) => "/" + p.route)
+  );
+  // 方式说明：产品列表页底栏是 TabBar two（首页 / 返回）。
+  // 真实用户点「返回」→ TabBar 内 uni.navigateBack；点「首页」→ switchTab。
+  // 这里用 wx.navigateBack（与「返回」同路径）。注意不能用 miniProgram.navigateBack()：
+  // 它内部走 changeRoute（currentPage → wx.navigateBack → sleep 3s），与模拟器路由栈
+  // 有竞态，实测会出现「返回后落到 tab 页」的假象。
+  await miniProgram.evaluate(() => {
+    wx.navigateBack({ delta: 1 });
+  });
   let afterBack = await miniProgram.currentPage();
   {
     const start = Date.now();
-    while (Date.now() - start < 8000) {
+    while (Date.now() - start < 12000) {
       afterBack = await miniProgram.currentPage();
       if (afterBack && afterBack.path === "pages/index/index") break;
       await sleep(400);
     }
   }
+  const stackAfter = await miniProgram.evaluate(() =>
+    getCurrentPages().map((p) => "/" + p.route)
+  );
   assert(
     afterBack && afterBack.path === "pages/index/index",
-    `产品列表点返回应直接回首页，实际 ${afterBack && afterBack.path}`
+    `产品列表点返回应直接回首页，实际 ${afterBack && afterBack.path}；栈 ${JSON.stringify(
+      stackBefore
+    )} → ${JSON.stringify(stackAfter)}`
   );
   {
     // 再多等一会，确认没有被分类页「转发桥」二次跳走
@@ -299,9 +319,19 @@ async function runAssertions(miniProgram, homeData, categoriesData) {
     current.path === "pages/article/list",
     `点「乐卡思资讯」应跳 /pages/article/list，实际 ${current.path}`
   );
-  await miniProgram.navigateBack();
-  await sleep(1000);
+  // 同 [3b]：用页面侧 wx.navigateBack，避免 miniProgram.navigateBack 的路由竞态
+  await miniProgram.evaluate(() => {
+    wx.navigateBack({ delta: 1 });
+  });
   current = await miniProgram.currentPage();
+  {
+    const start = Date.now();
+    while (Date.now() - start < 8000) {
+      current = await miniProgram.currentPage();
+      if (current && current.path === "pages/index/index") break;
+      await sleep(400);
+    }
+  }
   assert(
     current && current.path === "pages/index/index",
     `资讯页返回后应回首页，实际 ${current && current.path}`
@@ -322,6 +352,91 @@ async function runAssertions(miniProgram, homeData, categoriesData) {
   const fabShotPath = path.join(SHOT_DIR, "mp02-home-hero-fab.png");
   await miniProgram.screenshot({ path: fabShotPath });
   console.log(`[6] 选款 FAB 组件挂载通过（几何 64×42 由 vitest 覆盖，像素兜底 ${fabShotPath}）`);
+
+  // [6b] 选款分流（用户 2026-11-17 决策）：store 空 → 方案编辑页空态；
+  // store 非空 → 选品页。FAB 内部节点在 automator 里不可达且宿主 0×0（组件用
+  // position:fixed 脱离文档流），故用 selectComponent 拿实例直接调编译后的
+  // tap 处理器（e0_01），这是 IDE 2.02 下唯一可靠的驱动方式。
+  {
+    // 确保 store 为空：清掉上一轮可能残留的选品
+    await miniProgram.evaluate(() => {
+      // uni-app 的 pinia 实例挂在 app.$vm.$pinia（不是 app.$pinia，后者为 undefined）
+      const app = getApp();
+      const pinia = app.$pinia || (app.$vm && app.$vm.$pinia);
+      const sel = pinia && pinia._s && pinia._s.get("selection");
+      if (sel) {
+        sel.selectedProducts = [];
+        sel.currentSchemeId = null;
+      }
+      return true;
+    });
+    await sleep(600);
+    await miniProgram.evaluate(() => {
+      const pages = getCurrentPages();
+      const p = pages[pages.length - 1];
+      const c = p.selectComponent(".select-fab-anchor");
+      if (c && typeof c.e0_01 === "function") c.e0_01({ type: "tap" });
+      return true;
+    });
+    await sleep(2000);
+    let dest = await miniProgram.currentPage();
+    {
+      const start = Date.now();
+      while (Date.now() - start < 8000) {
+        dest = await miniProgram.currentPage();
+        if (dest && dest.path === "pages/scheme/edit") break;
+        await sleep(400);
+      }
+    }
+    assert(
+      dest && dest.path === "pages/scheme/edit",
+      `store 为空时点选款应进方案编辑页空态（plan-01-empty），实际 ${dest && dest.path}`
+    );
+    console.log("[6b] store 空 → 选款进入方案编辑页空态通过");
+
+    // store 非空 → 选品页
+    // 注意：不能用 reLaunch 回首页——小程序里 reLaunch 会重建页面栈，Pinia 内容会丢，
+    // 导致刚注入的选品被清空（实测退化成编辑页空态）。改用 navigateBack/switchTab 保留状态。
+    await miniProgram.evaluate(() => {
+      const app = getApp();
+      const pinia = app.$pinia || (app.$vm && app.$vm.$pinia);
+      const sel = pinia && pinia._s && pinia._s.get("selection");
+      if (sel) {
+        sel.selectedProducts = [
+          { id: 999, name: "探针产品", model: "P-999", main_image: "/x.jpg" },
+        ];
+      }
+      return true;
+    });
+    await miniProgram.switchTab("/pages/index/index");
+    await sleep(1800);
+    await miniProgram.evaluate(() => {
+      const pages = getCurrentPages();
+      const p = pages[pages.length - 1];
+      const c = p.selectComponent(".select-fab-anchor");
+      if (c && typeof c.e0_01 === "function") c.e0_01({ type: "tap" });
+      return true;
+    });
+    await sleep(2000);
+    {
+      const start = Date.now();
+      while (Date.now() - start < 8000) {
+        dest = await miniProgram.currentPage();
+        if (dest && dest.path === "pages/scheme/selection") break;
+        await sleep(400);
+      }
+    }
+    assert(
+      dest && dest.path === "pages/scheme/selection",
+      `store 非空时点选款应进选品页，实际 ${dest && dest.path}`
+    );
+    console.log("[6b] store 非空 → 选款进入选品页通过");
+
+    // 复位：回首页继续后续断言
+    await miniProgram.reLaunch("/pages/index/index");
+    await sleep(1500);
+    current = await miniProgram.currentPage();
+  }
 
   // [7] 旧 V2 结构 / 版本条不存在
   const legacy = [".category-grid", ".category-cell", ".category-more", ".service-scroll"];
@@ -388,11 +503,11 @@ async function main() {
 
   let miniProgram;
   try {
-    miniProgram = await withTimeout(
-      automator.launch({ cliPath: CLI_PATH, projectPath: MP_DIST }),
-      60000,
-      "automator.launch"
-    );
+    // 用共享 helper：内置 launch 重试（上一实例未退干净）+ 就绪轮询
+    // （IDE 2.x 下 currentPage 有竞态，会抛 getPageMetaByWebviewId null）
+    miniProgram = await launchAndReady(automator, CLI_PATH, MP_DIST, {
+      log: (m) => console.log(m),
+    });
   } catch (err) {
     console.error(`[环境阻塞] automator 启动失败：${err.message}`);
     process.exitCode = 2;
