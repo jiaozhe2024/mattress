@@ -3,8 +3,12 @@
 import { onLoad } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import { getArticles, type ArticleCategory } from "@/api/content";
+import SafeArea from "@/components/frame/SafeArea.vue";
+import WechatNav from "@/components/frame/WechatNav.vue";
 import type { WxArticleSummary } from "@/types/home";
 import { absoluteUrl } from "@/utils/url";
+
+const NAV_TITLE = "品牌资讯";
 
 type PageStatus = "loading" | "ready" | "error";
 
@@ -41,50 +45,69 @@ function formatDate(iso: string | null): string {
 
 <template>
   <view class="page">
-    <view v-if="pageStatus === 'loading'" class="state-box">
-      <text class="state-text">加载中…</text>
-    </view>
-    <view v-else-if="pageStatus === 'error'" class="state-box">
-      <text class="state-text">资讯加载失败</text>
-      <view class="state-retry" @tap="loadArticles">
-        <text class="state-retry-text">重试</text>
+    <WechatNav
+      :title="NAV_TITLE"
+      back
+      class="nav-anchor"
+      :data-nav-title="NAV_TITLE"
+      :data-nav-back="1"
+    />
+
+    <view class="body">
+      <view v-if="pageStatus === 'loading'" class="state-box">
+        <text class="state-text">加载中…</text>
       </view>
-    </view>
-    <view v-else-if="articles.length === 0" class="state-box">
-      <text class="state-text">暂无资讯</text>
-    </view>
-    <view v-else class="list">
-      <view
-        v-for="article in articles"
-        :key="article.id"
-        class="row"
-        @tap="onArticleTap(article)"
-      >
-        <view class="row-cover">
-          <text class="row-cover-fallback">讯</text>
-          <image
-            v-if="article.cover"
-            class="row-cover-image"
-            :src="absoluteUrl(article.cover)"
-            mode="aspectFill"
-            lazy-load
-          />
-        </view>
-        <view class="row-body">
-          <text class="row-title">{{ article.title }}</text>
-          <text class="row-date">{{ formatDate(article.create_time) }}</text>
+      <view v-else-if="pageStatus === 'error'" class="state-box">
+        <text class="state-text">资讯加载失败</text>
+        <view class="state-retry" @tap="loadArticles">
+          <text class="state-retry-text">重试</text>
         </view>
       </view>
+      <view v-else-if="articles.length === 0" class="state-box">
+        <text class="state-text">暂无资讯</text>
+      </view>
+      <view v-else class="list">
+        <view
+          v-for="article in articles"
+          :key="article.id"
+          class="row"
+          @tap="onArticleTap(article)"
+        >
+          <view class="row-cover">
+            <text class="row-cover-fallback">讯</text>
+            <image
+              v-if="article.cover"
+              class="row-cover-image"
+              :src="absoluteUrl(article.cover)"
+              mode="aspectFill"
+              lazy-load
+            />
+          </view>
+          <view class="row-body">
+            <text class="row-title">{{ article.title }}</text>
+            <text class="row-date">{{ formatDate(article.create_time) }}</text>
+          </view>
+        </view>
+      </view>
     </view>
+
+    <SafeArea />
   </view>
 </template>
 
 <style scoped>
 .page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  padding: 24rpx 32rpx 48rpx;
   box-sizing: border-box;
   background-color: #fdfbf5;
+}
+
+.body {
+  flex: 1;
+  padding: 24rpx 32rpx 48rpx;
+  box-sizing: border-box;
 }
 
 .state-box {

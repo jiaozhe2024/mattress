@@ -3,7 +3,11 @@
 import { onLoad } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import { getArticle } from "@/api/content";
+import SafeArea from "@/components/frame/SafeArea.vue";
+import WechatNav from "@/components/frame/WechatNav.vue";
 import type { WxArticleDetail } from "@/types/home";
+
+const NAV_TITLE = "资讯详情";
 
 type PageStatus = "loading" | "ready" | "error";
 
@@ -40,30 +44,49 @@ function formatDate(iso: string | null): string {
 
 <template>
   <view class="page">
-    <view v-if="pageStatus === 'loading'" class="state-box">
-      <text class="state-text">加载中…</text>
-    </view>
-    <view v-else-if="pageStatus === 'error'" class="state-box">
-      <text class="state-text">资讯不存在或已下线</text>
-      <view class="state-retry" @tap="loadArticle">
-        <text class="state-retry-text">重试</text>
+    <WechatNav
+      :title="NAV_TITLE"
+      back
+      class="nav-anchor"
+      :data-nav-title="NAV_TITLE"
+      :data-nav-back="1"
+    />
+
+    <view class="body">
+      <view v-if="pageStatus === 'loading'" class="state-box">
+        <text class="state-text">加载中…</text>
+      </view>
+      <view v-else-if="pageStatus === 'error'" class="state-box">
+        <text class="state-text">资讯不存在或已下线</text>
+        <view class="state-retry" @tap="loadArticle">
+          <text class="state-retry-text">重试</text>
+        </view>
+      </view>
+      <view v-else-if="article" class="article">
+        <text class="article-title">{{ article.title }}</text>
+        <text class="article-date">{{ formatDate(article.create_time) }}</text>
+        <rich-text v-if="article.content" class="article-content" :nodes="article.content" />
+        <text v-else class="state-text">暂无正文</text>
       </view>
     </view>
-    <view v-else-if="article" class="article">
-      <text class="article-title">{{ article.title }}</text>
-      <text class="article-date">{{ formatDate(article.create_time) }}</text>
-      <rich-text v-if="article.content" class="article-content" :nodes="article.content" />
-      <text v-else class="state-text">暂无正文</text>
-    </view>
+
+    <SafeArea />
   </view>
 </template>
 
 <style scoped>
 .page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  padding: 32rpx;
   box-sizing: border-box;
   background-color: #fdfbf5;
+}
+
+.body {
+  flex: 1;
+  padding: 32rpx;
+  box-sizing: border-box;
 }
 
 .state-box {
