@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   absoluteUrl,
+  fitRichTextImages,
   inlineRichTextHeadings,
   normalizeRichText,
   rewriteRichTextImageSrc,
@@ -117,6 +118,46 @@ describe("inlineRichTextHeadings（h1~h4 内联小标题样式）", () => {
 
   it("空串安全", () => {
     expect(inlineRichTextHeadings("")).toBe("");
+  });
+});
+
+describe("fitRichTextImages（富文本图片不自适应会出现「只露一部分」）", () => {
+  it("无 style 的 img 注入宽度自适应", () => {
+    const out = fitRichTextImages('<img src="http://x/a.jpg">');
+    expect(out).toContain("max-width:100%");
+    expect(out).toContain("width:100%");
+    expect(out).toContain("height:auto");
+  });
+
+  it("空 style 的 img 同样注入（wangEditor 会产出 style=\"\"）", () => {
+    const out = fitRichTextImages('<img src="http://x/a.jpg" style=""/>');
+    expect(out).toMatch(/style="max-width:100%/);
+  });
+
+  it("已有 style 且无宽度声明时合并，不丢原样式", () => {
+    const out = fitRichTextImages('<img src="http://x/a.jpg" style="border:1px solid #ccc">');
+    expect(out).toContain("border:1px solid #ccc;");
+    expect(out).toContain("max-width:100%");
+  });
+
+  it("运营显式设了 width 时不覆盖", () => {
+    const html = '<img src="http://x/a.jpg" style="width:120px">';
+    expect(fitRichTextImages(html)).toBe(html);
+  });
+
+  it("已设 max-width 时同样不覆盖", () => {
+    const html = '<img src="http://x/a.jpg" style="max-width:50%">';
+    expect(fitRichTextImages(html)).toBe(html);
+  });
+
+  it("多图全部处理，其它标签不碰", () => {
+    const out = fitRichTextImages('<p>a</p><img src="1.jpg"><p>b</p><img src="2.jpg">');
+    expect(out.match(/max-width:100%/g)?.length).toBe(2);
+    expect(out).toContain("<p>a</p>");
+  });
+
+  it("空串安全", () => {
+    expect(fitRichTextImages("")).toBe("");
   });
 });
 

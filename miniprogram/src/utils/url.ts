@@ -56,11 +56,37 @@ export function inlineRichTextHeadings(
 }
 
 /**
- * 富文本渲染前的统一规范化：补全图片绝对地址 + 标题样式内联。
+ * 富文本图片自适应容器宽度。
+ *
+ * 为什么需要：rich-text 里的 <img> 不指定宽度时按图片原始像素渲染
+ * （运营上传的 1440×1800 原图会把容器撑爆，只露出一部分），而 scoped CSS
+ * 管不到 rich-text 内部节点。只能把宽度约束内联进节点 HTML。
+ *
+ * 已有 width/max-width 声明的图不覆盖——运营显式设定尺寸时以他的为准。
+ */
+const IMG_FIT_STYLE = "max-width:100%;width:100%;height:auto;display:block;";
+
+export function fitRichTextImages(html: string): string {
+  if (html === "") return html;
+  return html.replace(/<img\b[^>]*>/gi, (tag: string) => {
+    const styleMatch = /\bstyle\s*=\s*(["'])([\s\S]*?)\1/i.exec(tag);
+    if (styleMatch) {
+      const existing = styleMatch[2];
+      if (/\b(width|max-width)\s*:/i.test(existing)) return tag;
+      const sep = existing.trim() === "" || /;\s*$/.test(existing) ? "" : ";";
+      const merged = `${existing}${sep}${IMG_FIT_STYLE}`;
+      return tag.replace(styleMatch[0], `style=${styleMatch[1]}${merged}${styleMatch[1]}`);
+    }
+    return tag.replace(/<img\b/i, `<img style="${IMG_FIT_STYLE}"`);
+  });
+}
+
+/**
+ * 富文本渲染前的统一规范化：补全图片绝对地址 + 图片宽度自适应 + 标题样式内联。
  */
 export function normalizeRichText(
   html: string,
   base: string = DEFAULT_ASSET_BASE
 ): string {
-  return inlineRichTextHeadings(rewriteRichTextImageSrc(html, base));
+  return inlineRichTextHeadings(fitRichTextImages(rewriteRichTextImageSrc(html, base)));
 }

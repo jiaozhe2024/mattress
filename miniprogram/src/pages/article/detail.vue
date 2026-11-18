@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /** 资讯/服务详情（MP-02 跳转目标：首页服务卡片、资讯列表）。富文本走 rich-text。 */
 import { onLoad } from "@dcloudio/uni-app";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { getArticle } from "@/api/content";
+import { normalizeRichText } from "@/utils/url";
 import SafeArea from "@/components/frame/SafeArea.vue";
 import WechatNav from "@/components/frame/WechatNav.vue";
 import type { WxArticleDetail } from "@/types/home";
@@ -40,6 +41,10 @@ function formatDate(iso: string | null): string {
   if (iso === null) return "";
   return iso.slice(0, 10);
 }
+
+// 富文本规范化：<img src="/uploads/..."> 补绝对地址（<rich-text> 不会自动补
+// VITE_ASSET_BASE_URL 前缀，真机上这些图会全部不显示）+ 图片宽度自适应 + h1~h4 内联样式。
+const richText = computed((): string => normalizeRichText(article.value?.content ?? ""));
 </script>
 
 <template>
@@ -65,7 +70,7 @@ function formatDate(iso: string | null): string {
       <view v-else-if="article" class="article">
         <text class="article-title">{{ article.title }}</text>
         <text class="article-date">{{ formatDate(article.create_time) }}</text>
-        <rich-text v-if="article.content" class="article-content" :nodes="article.content" />
+        <rich-text v-if="richText" class="article-content" :nodes="richText" />
         <text v-else class="state-text">暂无正文</text>
       </view>
     </view>
