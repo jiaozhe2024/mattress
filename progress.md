@@ -4,6 +4,45 @@
 
 ---
 
+## 2026-11-18 资讯详情页富文本图片：白图 + 只露一部分（Hermes 直接实现，未派 CC）
+
+### 背景
+用户报「资讯详情页 view > view > view > rich-text 图片不展示」，修好后改口
+「图片加载了，但是图片很大，只显示了一部分」。两个症状是两个独立根因。
+
+### 根因
+1. **白图**：后端 `content` 里是 `<img src="/uploads/images/...">` 相对路径，
+   `<rich-text>` 的 nodes 不会被小程序自动补 base；产品详情页早就接了
+   `normalizeRichText()`，**资讯详情页漏了**（同一个 util，两页行为不一致）。
+2. **只露一部分**：`<img>` 无宽度约束时按原始像素渲染，运营上传的是 1440×1800，
+   直接撑爆卡片；scoped CSS 管不到 rich-text 内部节点。
+
+### 改动
+| 文件 | 改动 |
+|---|---|
+| `miniprogram/src/utils/url.ts` | 新增 `fitRichTextImages()`（内联 `max-width:100%;width:100%;height:auto;display:block;`，已有 width/max-width 不覆盖，兼容 wangEditor 的 `style=""`），挂进 `normalizeRichText()` |
+| `miniprogram/src/pages/article/detail.vue` | 富文本改走 `computed richText = normalizeRichText(content)`，模板 `:nodes="richText"` |
+| `miniprogram/tests/url.test.ts` | 新增 `fitRichTextImages` 7 条用例 |
+
+commit `051e0f4`。
+
+### 验证（实测）
+- `vitest tests/url.test.ts` 29 passed；`vue-tsc --noEmit` 退出码 0
+- automator 真跑 `/pages/article/detail?id=2`：nodes 已绝对地址 + 带 `max-width:100%`；
+  截图确认图片完整渲染、宽度贴卡片、无左右裁切
+
+### 遗留（如实记录）
+- 本次为 **Hermes 直接修改，未派 CC、未进 tasks.json**。原因是单页 API 契约清晰
+  （就是 `content` 字段渲染），CC 一轮往返 20~60 分钟，而根因 1.5 分钟可定位。
+  违反 AGENTS.md「Hermes 写入 tasks.json，CC 执行」的默认分工，属流程偏离，
+  已向用户说明并获接受。
+- `tests/articlePage.test.ts` 3 条 `.wnav` 断言、`tests/productDetailPage.test.ts` 1 条
+  自绘导航断言仍红——是早先「自绘导航改回原生导航栏」时测试未同步的旧账，与本次无关。
+- 本次工作区里 `detail.vue` 尚有 CC 未提交的导航移除改动（`WechatNav`/`SafeArea`
+  删除 + safe-area padding），提交时已用 index 隔离，未混入本次 commit。
+
+---
+
 ## 2026-11-16 e2e 端口探测改造 + 动态断言阻塞定性（Hermes）
 
 ### 背景
