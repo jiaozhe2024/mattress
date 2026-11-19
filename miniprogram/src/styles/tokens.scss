@@ -141,10 +141,6 @@ $tabbar-item-width: 64px;
 $tabbar-item-gap: 3px;
 $tabbar-icon-size: 24px;
 $tabbar-label-size: 10px;
-$safe-area-height: 22px;
-$gesture-bar-width: 120px;
-$gesture-bar-height: 4px;
-$gesture-bar-radius: 4px;
 $version-bar-height: 24px; // Q12 版本标识条：仅登记，不实现
 
 /* ---------------- 工具函数 / mixin ---------------- */
@@ -276,9 +272,5 @@ $version-bar-height: 24px; // Q12 版本标识条：仅登记，不实现
   --tabbar-item-gap: 3px;
   --tabbar-icon-size: 24px;
   --tabbar-label-size: 10px;
-  --safe-area-height: 22px;
-  --gesture-bar-width: 120px;
-  --gesture-bar-height: 4px;
-  --gesture-bar-radius: 4px;
   --version-bar-height: 24px;
 }

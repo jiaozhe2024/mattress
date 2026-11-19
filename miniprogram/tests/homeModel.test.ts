@@ -1,15 +1,16 @@
 import { describe, it, expect } from "vitest";
 import {
   BEDDING_ENTRIES,
-  HOME_SERVICE_CARDS,
+  HOME_SERVICE_LIMIT,
   HOME_SERVICE_TITLE,
   QUICK_ENTRIES,
   SERIES_CARD_LIMIT,
   bannerIndicatorCount,
   seriesCardViewsOf,
   seriesCardsOf,
+  serviceCardViewsOf,
 } from "@/components/home/homeModel";
-import type { WxCategory } from "@/types/home";
+import type { WxArticleSummary, WxCategory } from "@/types/home";
 
 function makeCategory(
   id: number,
@@ -44,18 +45,9 @@ describe("homeModel 静态内容（spec.md §5.1）", () => {
     ]);
   });
 
-  it("好眠服务区块标题 + 3 张服务卡文案", () => {
+  it("好眠服务区块标题固定", () => {
     expect(HOME_SERVICE_TITLE).toBe("乐卡思 · 好眠服务");
-    expect(HOME_SERVICE_CARDS.map((card) => card.title)).toEqual([
-      "产品认识",
-      "睡眠小课堂",
-      "到店体验",
-    ]);
-    expect(HOME_SERVICE_CARDS.map((card) => card.caption)).toEqual([
-      "了解面料与结构",
-      "找到适合的睡感",
-      "亲自感受舒适",
-    ]);
+    expect(HOME_SERVICE_LIMIT).toBe(3);
   });
 
   it("快捷入口 2 项：资讯（newspaper）/ 客服（message-circle）", () => {
@@ -138,8 +130,65 @@ describe("seriesCardViewsOf（banner_image 优先，文字降级）", () => {
   });
 });
 
-describe("bannerIndicatorCount（Q14：仅 1 张时隐藏指示点）", () => {
-  it.each([
+describe("serviceCardViewsOf（/wxapi/home services 前 3 条，cover 图片降级）", () => {
+  function makeService(
+    id: number,
+    overrides: Partial<WxArticleSummary> = {}
+  ): WxArticleSummary {
+    return {
+      id,
+      title: `服务${id}`,
+      category: "service",
+      cover: null,
+      create_time: null,
+      ...overrides,
+    };
+  }
+
+  it("按后端顺序取前 3 条，保留标题", () => {
+    const views = serviceCardViewsOf([
+      makeService(1, { title: "产品认识" }),
+      makeService(2, { title: "睡眠小课堂" }),
+      makeService(3, { title: "到店体验" }),
+      makeService(4, { title: "多余" }),
+    ]);
+    expect(views.map((view) => view.title)).toEqual([
+      "产品认识",
+      "睡眠小课堂",
+      "到店体验",
+    ]);
+  });
+
+  it("cover 非空 → 图片通道；null/空串/纯空格 → imageSrc=null", () => {
+    const views = serviceCardViewsOf([
+      makeService(1, { cover: "/uploads/a.png" }),
+      makeService(2, { cover: null }),
+      makeService(3, { cover: "   " }),
+    ]);
+    expect(views.map((view) => view.imageSrc)).toEqual([
+      "/uploads/a.png",
+      null,
+      null,
+    ]);
+  });
+
+  it("图片加载失败（failedIds）降级为占位", () => {
+    const views = serviceCardViewsOf(
+      [makeService(1, { cover: "/uploads/a.png" })],
+      [1]
+    );
+    expect(views[0].imageSrc).toBeNull();
+    expect(views[0].title).toBe("服务1");
+  });
+
+  it("空数组 / limit=0 / 非有限值返回空数组", () => {
+    expect(serviceCardViewsOf([])).toEqual([]);
+    expect(serviceCardViewsOf([makeService(1)], [], 0)).toEqual([]);
+    expect(serviceCardViewsOf([makeService(1)], [], Number.NaN)).toEqual([]);
+  });
+});
+
+describe("bannerIndicatorCount（Q14：仅 1 张时隐藏指示点）", () => {  it.each([
     [0, 0],
     [1, 0],
     [2, 2],

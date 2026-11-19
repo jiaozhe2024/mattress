@@ -122,7 +122,6 @@ function assertStaticSource() {
   chk("无固定底部操作条", !/position:\s*fixed[\s\S]{0,120}(bottom|actions)/.test(style));
   // 只查真实组件引用（import / 标签），注释里出现 "TabBar" 不算
   chk("无 TabBar 组件", !/from\s+["'][^"']*frame\/TabBar/.test(page) && !/<TabBar/.test(page));
-  chk("仅 SafeArea 收尾", /SafeArea/.test(page));
 
   // ---- Q9：日期动态格式化 ----
   chk("导出 formatSchemeDate", /export function formatSchemeDate/.test(model));

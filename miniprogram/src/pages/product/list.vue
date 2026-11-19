@@ -14,7 +14,7 @@
  * 跨页传参：分类页以 category_id 查询参数进入；首页寝具/分类卡经 Pinia 转发（核心约定 9）。
  */
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { getCategories, SORT_TABS, type ProductSortTab } from "@/api/product";
 import ProductCard from "@/components/product/ProductCard.vue";
 import {
@@ -24,9 +24,7 @@ import {
   productDetailUrlOf,
   resolvePageTitle,
 } from "@/components/product/productListModel";
-import SafeArea from "@/components/frame/SafeArea.vue";
 import TabBar from "@/components/frame/TabBar.vue";
-import WechatNav from "@/components/frame/WechatNav.vue";
 import Icon from "@/components/icons/Icon.vue";
 import { useProductList } from "@/composables/useProductList";
 import { useProductFilterStore } from "@/stores/useProductFilterStore";
@@ -81,6 +79,16 @@ let historyHideTimer: ReturnType<typeof setTimeout> | null = null;
 
 const pageTitle = computed((): string =>
   resolvePageTitle(categoryId.value, categories.value, queryCategoryName.value)
+);
+
+// 标题是动态的（分类名 / 关键词兜底），需同步到微信原生导航栏。
+// immediate 覆盖首帧，categories 异步返回后 watch 再刷一次。
+watch(
+  pageTitle,
+  (title) => {
+    uni.setNavigationBarTitle({ title });
+  },
+  { immediate: true }
 );
 
 const showHistoryPanel = computed(
@@ -290,8 +298,6 @@ function onFooterTap(): void {
 
 <template>
   <view class="pl-page">
-    <WechatNav :title="pageTitle" back class="nav-anchor" :data-nav-title="pageTitle" :data-nav-back="1" />
-
     <!-- ① 筛选区域：搜索与视图行 + 排序行 -->
     <view class="pl-head">
       <view class="pl-search-wrap">
@@ -401,7 +407,6 @@ function onFooterTap(): void {
     <!-- ③ 底部 TabBar two（首页 / 返回） -->
     <view class="pl-tabbar">
       <TabBar variant="two" :active="-1" />
-      <SafeArea />
     </view>
   </view>
 </template>
@@ -422,6 +427,10 @@ function onFooterTap(): void {
   flex-direction: column;
   gap: $space-12;
   padding: $space-16 $space-16 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
 }
 
 .pl-search-wrap {
@@ -647,9 +656,10 @@ function onFooterTap(): void {
   color: $color-navy;
 }
 
-/* ---------------- ③ 底部 TabBar two + 安全区 ---------------- */
+/* ---------------- ③ 底部 TabBar two + 原生安全区 ---------------- */
 .pl-tabbar {
   flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom);
   background-color: $color-text-inv;
 }
 </style>

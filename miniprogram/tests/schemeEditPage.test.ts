@@ -2,6 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { Product } from "@/types/product";
 
 const hoisted = vi.hoisted(() => ({ loadOptions: {} as Record<string, unknown> }));
@@ -108,10 +110,18 @@ afterEach(() => {
 });
 
 describe("方案编辑页 · 空态（spec.md §5.5）", () => {
-  it("二级页导航：返回箭头 + 标题 LEKASI 乐卡思", async () => {
+  // 编辑页已改用原生导航栏（pages.json 去 navigationStyle:custom），
+  // 标题真值在 pages.json，页面内不再有 .wnav-* 自绘节点。
+  it("pages.json 注册「LEKASI 乐卡思」标题且页面不自绘导航栏", async () => {
+    const json = JSON.parse(
+      readFileSync(path.join(__dirname, "..", "src", "pages.json"), "utf8")
+    ) as { pages: Array<{ path: string; style?: Record<string, unknown> }> };
+    const entry = json.pages.find((page) => page.path === "pages/scheme/edit");
+    expect(entry?.style?.navigationBarTitleText).toBe("LEKASI 乐卡思");
+    expect(entry?.style?.navigationStyle).toBeUndefined();
+
     const wrapper = await mountPage();
-    expect(wrapper.find(".wnav-back").exists()).toBe(true);
-    expect(wrapper.find(".wnav-title").text()).toBe("LEKASI 乐卡思");
+    expect(wrapper.find(".wnav").exists()).toBe(false);
   });
 
   it("标题输入占位「方案标题」，右侧 pencil 图标", async () => {

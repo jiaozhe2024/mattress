@@ -2,17 +2,14 @@
 /**
  * 全局复用层校验页（MP-07）
  *
- * 作用：10 个业务页未还原前，集中渲染 WechatNav（一级/二级）、SafeArea、
- * TabBar 的 three / two 两个 variant，供 scripts/e2e/frame.auto.js 做元素存在性
- * 与截图断言，以及单测之外的人工核对。
+ * 作用：集中校验 TabBar 的 three / two 两个 variant。
+ * 导航已改用微信原生导航栏（pages.json 的 navigationBarTitleText），本页不再自绘标题栏。
  *
  * 范围说明：本页只组合全局层组件，不含任何业务内容；不进入 tabBar，
  * 业务页面还原（MP-02 起）不受影响。
  */
 import { ref } from "vue";
-import SafeArea from "@/components/frame/SafeArea.vue";
 import TabBar from "@/components/frame/TabBar.vue";
-import WechatNav from "@/components/frame/WechatNav.vue";
 
 const tabVariant = ref<"three" | "two">("three");
 
@@ -23,15 +20,7 @@ function toggleVariant(): void {
 
 <template>
   <view class="frame-page">
-    <WechatNav title="LEKASI 乐卡思" class="nav-anchor" :data-nav-title="'LEKASI 乐卡思'" :data-nav-brand="'LEKASI'" />
     <view class="frame-body">
-      <view class="frame-block" data-block="nav-primary">
-        <text class="frame-hint">一级页导航：左侧 LEKASI 品牌缩写</text>
-      </view>
-      <view class="frame-block" data-block="nav-secondary">
-        <WechatNav title="产品详情" back class="nav-anchor nav-anchor--secondary" :data-nav-title="'产品详情'" :data-nav-back="1" />
-        <text class="frame-hint">二级页导航：左侧 chevron-left 22×22</text>
-      </view>
       <view class="frame-block">
         <view
           class="frame-toggle"
@@ -51,9 +40,6 @@ function toggleVariant(): void {
         :data-tabbar-count="3"
         :data-tabbar-active="tabVariant === 'three' ? '0' : '-1'"
       />
-    </view>
-    <view class="frame-safe" data-block="safe-area">
-      <SafeArea />
     </view>
   </view>
 </template>
@@ -104,10 +90,6 @@ function toggleVariant(): void {
 }
 
 .frame-tabbar {
-  width: 100%;
-}
-
-.frame-safe {
   width: 100%;
 }
 </style>

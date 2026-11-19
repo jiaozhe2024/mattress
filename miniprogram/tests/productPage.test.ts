@@ -95,6 +95,7 @@ function uniStub(): Record<string, unknown> {
     switchTab: vi.fn(),
     reLaunch: vi.fn(),
     showToast: vi.fn(),
+    setNavigationBarTitle: vi.fn(),
   };
 }
 
@@ -119,24 +120,33 @@ afterEach(() => {
 });
 
 describe("产品页 V3 结构（spec.md §5.3 + Q5/Q6/Q12）", () => {
-  it("二级页导航：返回箭头 + 标题取自 category_id 对应的分类名", async () => {
-    const wrapper = await mountPage({ category_id: "2" });
-    expect(wrapper.find(".wnav-back").exists()).toBe(true);
-    expect(wrapper.find(".wnav-title").text()).toBe("手工 · 零胶虑");
+  // 产品列表页已改为原生导航栏（pages.json 去 navigationStyle:custom），
+  // 标题由 uni.setNavigationBarTitle 下发，页面内不再有 .wnav-* 自绘节点。
+  function lastNavTitle(): string | undefined {
+    const uni = (globalThis as unknown as {
+      uni: { setNavigationBarTitle: ReturnType<typeof vi.fn> };
+    }).uni;
+    const calls = uni.setNavigationBarTitle.mock.calls;
+    return calls.length === 0 ? undefined : (calls[calls.length - 1][0] as { title: string }).title;
+  }
+
+  it("原生导航栏标题取自 category_id 对应的分类名", async () => {
+    await mountPage({ category_id: "2" });
+    expect(lastNavTitle()).toBe("手工 · 零胶虑");
   });
 
   it("分类接口失败时标题回退 query.category_name", async () => {
     mockGetCategories.mockRejectedValue(new Error("500"));
-    const wrapper = await mountPage({
+    await mountPage({
       category_id: "99",
       category_name: "薄垫 · 不薄待",
     });
-    expect(wrapper.find(".wnav-title").text()).toBe("薄垫 · 不薄待");
+    expect(lastNavTitle()).toBe("薄垫 · 不薄待");
   });
 
   it("无任何分类信息时标题兜底「产品」", async () => {
-    const wrapper = await mountPage({});
-    expect(wrapper.find(".wnav-title").text()).toBe("产品");
+    await mountPage({});
+    expect(lastNavTitle()).toBe("产品");
   });
 
   it("搜索框占位文案逐字为「请输入搜索的商品」", async () => {

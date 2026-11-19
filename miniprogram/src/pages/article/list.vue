@@ -3,8 +3,6 @@
 import { onLoad } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import { getArticles, type ArticleCategory } from "@/api/content";
-import SafeArea from "@/components/frame/SafeArea.vue";
-import WechatNav from "@/components/frame/WechatNav.vue";
 import type { WxArticleSummary } from "@/types/home";
 import { absoluteUrl } from "@/utils/url";
 
@@ -45,14 +43,6 @@ function formatDate(iso: string | null): string {
 
 <template>
   <view class="page">
-    <WechatNav
-      :title="NAV_TITLE"
-      back
-      class="nav-anchor"
-      :data-nav-title="NAV_TITLE"
-      :data-nav-back="1"
-    />
-
     <view class="body">
       <view v-if="pageStatus === 'loading'" class="state-box">
         <text class="state-text">加载中…</text>
@@ -90,8 +80,6 @@ function formatDate(iso: string | null): string {
         </view>
       </view>
     </view>
-
-    <SafeArea />
   </view>
 </template>
 
@@ -106,7 +94,7 @@ function formatDate(iso: string | null): string {
 
 .body {
   flex: 1;
-  padding: 24rpx 32rpx 48rpx;
+  padding: 24rpx 32rpx calc(48rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 

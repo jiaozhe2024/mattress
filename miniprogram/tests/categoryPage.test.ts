@@ -4,12 +4,27 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import type { WxCategory } from "@/types/home";
 
+const hoisted = vi.hoisted(() => ({
+  pullDownHandler: null as null | (() => void),
+  scrollHandler: null as null | (() => void),
+  unloadHandler: null as null | (() => void),
+}));
+
 vi.mock("@dcloudio/uni-app", () => ({
   onLoad: (callback: () => void) => {
     callback();
   },
   onShow: (callback: () => void) => {
     callback();
+  },
+  onPullDownRefresh: (callback: () => void) => {
+    hoisted.pullDownHandler = callback;
+  },
+  onPageScroll: (callback: () => void) => {
+    hoisted.scrollHandler = callback;
+  },
+  onUnload: (callback: () => void) => {
+    hoisted.unloadHandler = callback;
   },
 }));
 
@@ -60,7 +75,16 @@ function uniStub(): Record<string, unknown> {
     navigateTo: vi.fn(),
     switchTab: vi.fn(),
     showToast: vi.fn(),
+    stopPullDownRefresh: vi.fn(),
   };
+}
+
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
 }
 
 async function mountCategory(): Promise<ReturnType<typeof mount>> {
@@ -77,6 +101,7 @@ beforeEach(() => {
 
 afterEach(() => {
   delete (globalThis as { uni?: unknown }).uni;
+  hoisted.pullDownHandler = null;
   vi.clearAllMocks();
 });
 
@@ -173,6 +198,51 @@ describe("产品分类页 V3 结构（spec.md §5.2 + Q12/Q15）", () => {
   it("底部 TabBar 由原生 custom-tab-bar 渲染（本页不自绘 three variant）", async () => {
     const wrapper = await mountCategory();
     expect(wrapper.find(".tabbar").exists()).toBe(false);
+  });
+});
+
+describe("产品分类页下拉刷新", () => {
+  it("onPullDownRefresh 重新拉取分类并收起刷新动画", async () => {
+    await mountCategory();
+    expect(hoisted.pullDownHandler).toBeTypeOf("function");
+    mockGetCategories.mockClear();
+
+    hoisted.pullDownHandler?.();
+    await flushPromises();
+
+    const uni = (globalThis as {
+      uni: { stopPullDownRefresh: ReturnType<typeof vi.fn> };
+    }).uni;
+    expect(mockGetCategories).toHaveBeenCalledTimes(1);
+    expect(uni.stopPullDownRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("刷新失败也收起刷新动画", async () => {
+    await mountCategory();
+    mockGetCategories.mockRejectedValue(new Error("500"));
+
+    hoisted.pullDownHandler?.();
+    await flushPromises();
+
+    const uni = (globalThis as {
+      uni: { stopPullDownRefresh: ReturnType<typeof vi.fn> };
+    }).uni;
+    expect(uni.stopPullDownRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("刷新不复用整页 loading 态：已有分类列表时刷新不闪「加载中…」", async () => {
+    const wrapper = await mountCategory();
+    const pending = deferred<WxCategory[]>();
+    mockGetCategories.mockReturnValue(pending.promise);
+
+    hoisted.pullDownHandler?.();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).not.toContain("加载中…");
+    expect(wrapper.findAll(".pc-entry")).toHaveLength(8);
+
+    pending.resolve(CATEGORIES);
+    await flushPromises();
   });
 });
 

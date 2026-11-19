@@ -13,8 +13,6 @@ import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { getPublicScheme, getSchemeDetail, shareScheme } from "@/api/scheme";
 import type { WxSchemeProduct } from "@/api/scheme";
-import SafeArea from "@/components/frame/SafeArea.vue";
-import WechatNav from "@/components/frame/WechatNav.vue";
 import {
   PREVIEW_BACK_LABEL,
   PREVIEW_BRAND,
@@ -135,8 +133,6 @@ onShareAppMessage((res) => {
 
 <template>
   <view class="sp-page">
-    <WechatNav :title="PREVIEW_NAV_TITLE" back class="nav-anchor" :data-nav-title="PREVIEW_NAV_TITLE" :data-nav-back="1" />
-
     <scroll-view class="sp-scroll" scroll-y :show-scrollbar="false">
       <!-- 加载 / 错误 / 空 -->
       <view v-if="status === 'loading'" class="sp-state">
@@ -207,8 +203,6 @@ onShareAppMessage((res) => {
         </text>
       </view>
     </view>
-
-    <SafeArea />
   </view>
 </template>
 
@@ -378,12 +372,14 @@ onShareAppMessage((res) => {
 }
 
 /* ③ 底部操作条：bg navy p14 gap12 */
+/* ③ 底部操作条：bg navy p14 gap12（下缘含原生安全区） */
 .sp-actions {
   display: flex;
   flex-shrink: 0;
   align-items: center;
   gap: $space-12;
   padding: $space-14;
+  padding-bottom: calc(#{$space-14} + env(safe-area-inset-bottom));
   box-sizing: border-box;
   background-color: $color-navy;
 }

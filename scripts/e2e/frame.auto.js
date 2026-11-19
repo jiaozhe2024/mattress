@@ -10,8 +10,7 @@
  *   [2] 预览页二级导航：chevron-left 图标存在，无品牌字
  *   [3] TabBar three：3 项 首页/产品/我的，首项选中
  *   [4] TabBar two：2 项 首页/返回，无选中项（点击切换按钮）
- *   [5] SafeArea：容器 + 手势条存在
- *   [6] 三个 tab 页（首页/产品/我的）可切换、逐页截图
+ *   [5] 三个 tab 页（首页/产品/我的）可切换、逐页截图
  *
  * 运行前提：
  *   - miniprogram/ 已 npm install
@@ -219,14 +218,6 @@ async function assertFramePage(miniProgram) {
   );
   const twoShot = await shot(miniProgram, "mp07-tabbar-two.png");
   console.log(`[4] TabBar two（切换生效）+ 截图 → ${twoShot}`);
-
-  // [5] SafeArea：同为自定义组件，内部 .safe-area/.safe-area-bar 不可见，
-  // 改验页面侧容器 data-block="safe-area" 是否渲染。
-  const safeHost = await page.$("[data-block='safe-area']");
-  assert(safeHost, "应渲染安全区容器（[data-block='safe-area']）");
-  const safeSize = await safeHost.size();
-  assert(safeSize.height > 0, `安全区高度应 >0，实际 ${safeSize.height}`);
-  console.log(`[5] SafeArea 容器通过（h=${safeSize.height}）`);
 }
 
 async function assertTabPages(miniProgram) {

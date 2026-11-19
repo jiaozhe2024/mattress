@@ -173,12 +173,12 @@ describe("Q12：不实现版本标识条", () => {
 });
 
 describe("页面注册与目标路由", () => {
-  it("pages.json 注册 pages/scheme/selection 且 navigationStyle=custom", () => {
+  it("pages.json 注册 pages/scheme/selection，标题「LEKASI 乐卡思」且用原生导航栏", () => {
     const entry = PAGES_JSON.pages.find(
       (page) => page.path === "pages/scheme/selection"
     );
     expect(entry).toBeDefined();
-    expect(entry?.style?.navigationStyle).toBe("custom");
+    expect(entry?.style?.navigationStyle).toBeUndefined();
     expect(entry?.style?.navigationBarTitleText).toBe("LEKASI 乐卡思");
   });
 
@@ -186,8 +186,7 @@ describe("页面注册与目标路由", () => {
     expect(CONFIG).toContain('export const SELECTION_PAGE = "/pages/scheme/selection";');
   });
 
-  it("页面复用 WechatNav / Icon，并走 useSelectionStore（核心约定 9）", () => {
-    expect(PAGE).toContain("<WechatNav");
+  it("页面复用 Icon，并走 useSelectionStore（核心约定 9）", () => {
     expect(PAGE).toContain("<Icon");
     expect(PAGE).toContain("useSelectionStore");
     expect(PAGE).not.toContain("setStorageSync");

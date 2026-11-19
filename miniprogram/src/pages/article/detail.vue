@@ -4,8 +4,6 @@ import { onLoad } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { getArticle } from "@/api/content";
 import { normalizeRichText } from "@/utils/url";
-import SafeArea from "@/components/frame/SafeArea.vue";
-import WechatNav from "@/components/frame/WechatNav.vue";
 import type { WxArticleDetail } from "@/types/home";
 
 const NAV_TITLE = "资讯详情";
@@ -43,20 +41,12 @@ function formatDate(iso: string | null): string {
 }
 
 // 富文本规范化：<img src="/uploads/..."> 补绝对地址（<rich-text> 不会自动补
-// VITE_ASSET_BASE_URL 前缀，真机上这些图会全部不显示）+ 图片宽度自适应 + h1~h4 内联样式。
+// VITE_ASSET_BASE_URL 前缀，真机上这些图会全部不显示）+ h1~h4 内联样式。
 const richText = computed((): string => normalizeRichText(article.value?.content ?? ""));
 </script>
 
 <template>
   <view class="page">
-    <WechatNav
-      :title="NAV_TITLE"
-      back
-      class="nav-anchor"
-      :data-nav-title="NAV_TITLE"
-      :data-nav-back="1"
-    />
-
     <view class="body">
       <view v-if="pageStatus === 'loading'" class="state-box">
         <text class="state-text">加载中…</text>
@@ -74,8 +64,6 @@ const richText = computed((): string => normalizeRichText(article.value?.content
         <text v-else class="state-text">暂无正文</text>
       </view>
     </view>
-
-    <SafeArea />
   </view>
 </template>
 
@@ -90,7 +78,7 @@ const richText = computed((): string => normalizeRichText(article.value?.content
 
 .body {
   flex: 1;
-  padding: 32rpx;
+  padding: 32rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 

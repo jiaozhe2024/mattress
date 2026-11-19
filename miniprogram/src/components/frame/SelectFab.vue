@@ -14,6 +14,14 @@ import { computed } from "vue";
 import { PRODUCT_LIST_TAB, SCHEME_EDIT_PAGE, SELECTION_PAGE } from "@/config";
 import { useSelectionStore } from "@/stores/useSelectionStore";
 
+const props = withDefaults(
+  defineProps<{
+    /** 页面滚动中：悬浮按钮降低透明度，滚动结束恢复 */
+    scrolling?: boolean;
+  }>(),
+  { scrolling: false }
+);
+
 const store = useSelectionStore();
 
 const badgeText = computed((): string =>
@@ -43,7 +51,11 @@ function goSelection(): void {
 </script>
 
 <template>
-  <view class="select-fab" @tap="goSelection">
+  <view
+    class="select-fab"
+    :class="{ 'select-fab--scrolling': props.scrolling }"
+    @tap="goSelection"
+  >
     <text class="select-fab-label">选款</text>
     <view v-if="store.selectedCount > 0" class="select-fab-badge">
       <text class="select-fab-badge-text">{{ badgeText }}</text>
@@ -60,17 +72,27 @@ function goSelection(): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 42px;
-  border-radius: $radius-20;
+  width: 42px;
+  height: 64px;
+  /* D 字形：左上/左下圆弧，右侧直角 */
+  border-radius: 32px 6px 6px 32px;
   background-color: $color-yellow;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.select-fab--scrolling {
+  opacity: 0.1;
 }
 
 .select-fab-label {
+  width: 1em;
   font-family: $font-family-cn;
   font-size: $font-15;
   font-weight: $font-weight-medium;
-  line-height: $line-height-15-fixed;
+  line-height: 20px;
+  text-align: center;
+  word-break: break-all;
   color: $color-navy;
 }
 

@@ -2,7 +2,7 @@
  * @Author: jiaozhe undefined
  * @Date: 2026-11-14 12:50:04
  * @LastEditors: jiaozhe undefined
- * @LastEditTime: 2026-11-14 12:52:00
+ * @LastEditTime: 2026-11-18 21:53:20
  * @FilePath: /mattress-ux/AGENTS.md
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -19,8 +19,7 @@
   - 管理后台 (B端)：Vue3 + Element Plus + Vite，不套模板，由 CC 直接生成 CRUD 页面（基于后端 Schema，保证代码风格统一）
   - 小程序 (C端)：Uni-app + Vue3 + TS + Pinia，参考 小兔鲜儿 (uniapp-shop-vue3-ts) 的请求封装、SKU 选择器、商品卡片；"多清单选品/方案"核心逻辑由 CC 从零生成
 - 核心业务模型（V2.0）：方案 Scheme（gin_scheme）+ 方案产品快照（gin_scheme_product，JSON 固化，产品更新不影响历史方案）；商品无独立 SKU 表，规格内嵌字段
-- 目录：backend/（FastAPI 后端 + Admin）、miniprogram/（小程序端）、scripts/e2e/（自动化验收脚本）、docs/、jp/（设计参考图）
-- 旧基座已清理：RuoYi-FastAPI（BE-01）代码已 git 移除、容器/卷已 down --volumes；backend/ 待按 NG-01 重建。BE-01 记为 cancelled，历史记录见 docs/exec-plans/active/BE-01-sprint-output.md（端口/前缀信息已失效）
+- 目录：backend/（FastAPI 后端 + Admin）、miniprogram/（小程序端）、scripts/e2e/（自动化验收脚本）、docs/
 - 启动：后端 backend/ `docker compose up -d`；小程序用微信开发者工具 CLI `cli open --project miniprogram`（cli = /Applications/wechatwebdevtools.app/Contents/MacOS/cli）
 - 测试：后端 pytest（backend/ 内）；小程序 vitest + miniprogram-simulate；E2E `node scripts/e2e/<页>.auto.js`
 - 环境检查：`bash init.sh`
@@ -42,6 +41,9 @@
 | 已知技术债务 | docs/exec-plans/tech-debt-tracker.md |
 
 ## 核心约定（必读，违反即返工）
+
+“当我的需求描述与现有代码库基线（如 design-tokens、现有组件样式）发生冲突时，不要试图在仓库里寻找妥协方案或自我怀疑。立刻停下来向我确认，或者直接以我的最新文字要求为最高优先级执行。”
+
 1. 用户分表：后台/运营用户与小程序用户严格分表；小程序用户进 wx_user（openid 唯一索引），永远不写进后台用户体系。
 2. 业务表前缀 gin_，不依赖基座框架表结构（跟随上游升级不被绑架）。
 3. 搜索用 MySQL FULLTEXT/LIKE，数据量 <10 万禁止引入 Elasticsearch。

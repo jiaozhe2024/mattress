@@ -9,10 +9,9 @@
  * 数据：GET /wxapi/categories（BE-10 八分类，banner_image 本轮为 null 走文字通道）。
  * 点击分类 → navigateTo 产品列表页并带 category_id（产品列表已降为普通页）。
  */
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onPageScroll, onPullDownRefresh, onUnload } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { getCategories } from "@/api/product";
-import WechatNav from "@/components/frame/WechatNav.vue";
 import SelectFab from "@/components/frame/SelectFab.vue";
 import Icon from "@/components/icons/Icon.vue";
 import {
@@ -31,6 +30,24 @@ const status = ref<PageStatus>("loading");
 const categories = ref<WxCategory[]>([]);
 const failedImageIds = ref<number[]>([]);
 
+// 滚动中降低选款 FAB 透明度：onPageScroll 无「停止」事件，用 180ms 尾沿去抖判定
+const isScrolling = ref(false);
+let scrollIdleTimer: ReturnType<typeof setTimeout> | null = null;
+
+onPageScroll(() => {
+  isScrolling.value = true;
+  if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
+  scrollIdleTimer = setTimeout(() => {
+    isScrolling.value = false;
+    scrollIdleTimer = null;
+  }, 180);
+});
+
+onUnload(() => {
+  if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
+  scrollIdleTimer = null;
+});
+
 const entries = computed(
   (): CategoryEntryView[] => categoryEntryViewsOf(categories.value, failedImageIds.value)
 );
@@ -39,14 +56,26 @@ onLoad(() => {
   void loadCategories();
 });
 
-async function loadCategories(): Promise<void> {
-  status.value = "loading";
+onPullDownRefresh(() => {
+  // 刷新不切 loading 态：保留已渲染分类，避免整页闪烁
+  void loadCategories({ isRefresh: true });
+});
+
+async function loadCategories(
+  options: { isRefresh?: boolean } = {}
+): Promise<void> {
+  const isRefresh = options.isRefresh === true;
+  if (!isRefresh) status.value = "loading";
   try {
     categories.value = await getCategories();
     status.value = "ready";
   } catch {
-    categories.value = [];
-    status.value = "error";
+    if (!isRefresh) {
+      categories.value = [];
+      status.value = "error";
+    }
+  } finally {
+    if (isRefresh) uni.stopPullDownRefresh();
   }
 }
 
@@ -68,8 +97,6 @@ function onEntryImageError(categoryId: number): void {
 
 <template>
   <view class="pc-page">
-    <WechatNav title="乐卡思 LEKASI" class="nav-anchor" :data-nav-title="'乐卡思 LEKASI'" />
-
     <view class="pc-body">
       <!-- ① 系列横幅 -->
       <view class="pc-banner">
@@ -93,7 +120,7 @@ function onEntryImageError(categoryId: number): void {
       </view>
       <view v-else-if="status === 'error'" class="pc-state">
         <text class="pc-state-text">分类加载失败</text>
-        <view class="pc-state-retry" @tap="loadCategories">
+        <view class="pc-state-retry" @tap="loadCategories()">
           <text class="pc-state-retry-text">重试</text>
         </view>
       </view>
@@ -135,7 +162,9 @@ function onEntryImageError(categoryId: number): void {
       </view>
     </view>
 
-    <view class="select-fab-host"><SelectFab class="select-fab-anchor" /></view>
+    <view class="select-fab-host"
+      ><SelectFab class="select-fab-anchor" :scrolling="isScrolling"
+    /></view>
   </view>
 </template>
 

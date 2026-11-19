@@ -6,29 +6,30 @@
  * 版块顺序：品牌主视觉卡（轮播）→ 2×2 系列卡 + 3 寝具入口 → 乐卡思 · 好眠服务 →
  * 资讯/客服快捷入口 → 选款 FAB；底部 TabBar 由原生 custom-tab-bar 渲染（首页选中）。
  *
- * 数据：GET /wxapi/home（banners）+ GET /wxapi/categories（系列卡前 4 条）。
+ * 数据：GET /wxapi/home（banners + services）+ GET /wxapi/categories（系列卡前 4 条）。
+ * services 即 category=service 的已发布文章，渲染为「好眠服务」三张卡（数据由后台文章管理维护）。
  * 跨页传参（分类 / 型号关键词）按核心约定 9 走 Pinia。
  */
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onPageScroll, onPullDownRefresh, onUnload } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { getCategories } from "@/api/product";
 import { getHome } from "@/api/content";
 import SelectFab from "@/components/frame/SelectFab.vue";
-import WechatNav from "@/components/frame/WechatNav.vue";
 import Icon from "@/components/icons/Icon.vue";
 import {
   BEDDING_ENTRIES,
-  HOME_SERVICE_CARDS,
   HOME_SERVICE_TITLE,
   QUICK_ENTRIES,
   bannerIndicatorCount,
   seriesCardViewsOf,
+  serviceCardViewsOf,
   type QuickEntryKey,
   type SeriesCardView,
+  type ServiceCardView,
 } from "@/components/home/homeModel";
 import { CUSTOMER_SERVICE, PRODUCT_LIST_PAGE, PRODUCT_LIST_TAB } from "@/config";
 import { useProductFilterStore } from "@/stores/useProductFilterStore";
-import type { WxBanner, WxCategory } from "@/types/home";
+import type { WxArticleSummary, WxBanner, WxCategory } from "@/types/home";
 import { resolveBannerTarget } from "@/utils/jump";
 import { absoluteUrl } from "@/utils/url";
 
@@ -36,16 +37,40 @@ type PageStatus = "loading" | "ready" | "error";
 
 const filterStore = useProductFilterStore();
 
+// 滚动中降低选款 FAB 透明度：onPageScroll 无「停止」事件，用 180ms 尾沿去抖判定
+const isScrolling = ref(false);
+let scrollIdleTimer: ReturnType<typeof setTimeout> | null = null;
+
+onPageScroll(() => {
+  isScrolling.value = true;
+  if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
+  scrollIdleTimer = setTimeout(() => {
+    isScrolling.value = false;
+    scrollIdleTimer = null;
+  }, 180);
+});
+
+onUnload(() => {
+  if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
+  scrollIdleTimer = null;
+});
+
 const pageStatus = ref<PageStatus>("loading");
 const banners = ref<WxBanner[]>([]);
 const categories = ref<WxCategory[]>([]);
+const services = ref<WxArticleSummary[]>([]);
 const failedBannerIds = ref<number[]>([]);
 const failedSeriesIds = ref<number[]>([]);
-const failedServiceKeys = ref<string[]>([]);
+const failedServiceIds = ref<number[]>([]);
 const bannerIndex = ref(0);
 
 const seriesCards = computed(
   (): SeriesCardView[] => seriesCardViewsOf(categories.value, failedSeriesIds.value)
+);
+
+const serviceCards = computed(
+  (): ServiceCardView[] =>
+    serviceCardViewsOf(services.value, failedServiceIds.value)
 );
 
 /** 指示点数量：仅 1 张（或 0 张）时为 0，整块隐藏。 */
@@ -59,13 +84,20 @@ const isEmptyHome = computed(
     banners.value.length === 0 &&
     categories.value.length === 0
 );
-
 onLoad(() => {
   void loadHome();
 });
 
-async function loadHome(): Promise<void> {
-  pageStatus.value = "loading";
+onPullDownRefresh(() => {
+  // 刷新不走整页 loading（避免内容闪烁），失败时保留已渲染内容
+  void loadHome({ isRefresh: true });
+});
+
+async function loadHome(
+  options: { isRefresh?: boolean } = {}
+): Promise<void> {
+  const isRefresh = options.isRefresh === true;
+  if (!isRefresh) pageStatus.value = "loading";
   let homeFailed = false;
   let categoriesFailed = false;
 
@@ -74,16 +106,27 @@ async function loadHome(): Promise<void> {
     banners.value = [...data.banners].sort(
       (a, b) => a.sort - b.sort || a.id - b.id
     );
+    services.value = data.services;
   } catch {
-    banners.value = [];
+    if (!isRefresh) {
+      banners.value = [];
+      services.value = [];
+    }
     homeFailed = true;
   }
 
   try {
     categories.value = await getCategories();
   } catch {
-    categories.value = [];
+    if (!isRefresh) categories.value = [];
     categoriesFailed = true;
+  }
+
+  if (isRefresh) {
+    // 刷新成功则转为正常态；失败保留现状（已有内容继续展示 / 错误态保留重试入口）
+    if (!homeFailed || !categoriesFailed) pageStatus.value = "ready";
+    uni.stopPullDownRefresh();
+    return;
   }
 
   // 两个接口全失败才算错误态；任一成功即按已有数据渲染（静态版块始终可显示）
@@ -179,14 +222,14 @@ function onSeriesImageError(categoryId: number): void {
   }
 }
 
-function onServiceImageError(key: string): void {
-  if (!failedServiceKeys.value.includes(key)) {
-    failedServiceKeys.value = [...failedServiceKeys.value, key];
+function onServiceImageError(serviceId: number): void {
+  if (!failedServiceIds.value.includes(serviceId)) {
+    failedServiceIds.value = [...failedServiceIds.value, serviceId];
   }
 }
 
-function isServiceImageVisible(key: string, image: string): boolean {
-  return image.trim() !== "" && !failedServiceKeys.value.includes(key);
+function goServiceDetail(serviceId: number): void {
+  uni.navigateTo({ url: `/pages/article/detail?id=${serviceId}` });
 }
 
 interface OpenCustomerServiceChatOptions {
@@ -223,14 +266,12 @@ function onQuickEntryTap(key: QuickEntryKey): void {
 
 <template>
   <view class="home">
-    <WechatNav title="乐卡思 LEKASI" class="nav-anchor" :data-nav-title="'乐卡思 LEKASI'" />
-
     <view v-if="pageStatus === 'loading'" class="home-state">
       <text class="home-state-text">加载中…</text>
     </view>
     <view v-else-if="pageStatus === 'error'" class="home-state">
       <text class="home-state-text">首页内容加载失败</text>
-      <view class="home-state-retry" @tap="loadHome">
+      <view class="home-state-retry" @tap="loadHome()">
         <text class="home-state-retry-text">重试</text>
       </view>
     </view>
@@ -318,29 +359,29 @@ function onQuickEntryTap(key: QuickEntryKey): void {
         </view>
       </view>
 
-      <!-- ③ 乐卡思 · 好眠服务 -->
-      <view class="home-services">
+      <!-- ③ 乐卡思 · 好眠服务（数据源：/wxapi/home services，后台文章管理维护） -->
+      <view v-if="serviceCards.length > 0" class="home-services">
         <text class="home-services-title">{{ HOME_SERVICE_TITLE }}</text>
         <view class="home-services-row">
           <view
-            v-for="service in HOME_SERVICE_CARDS"
-            :key="service.key"
+            v-for="service in serviceCards"
+            :key="service.id"
             class="home-service-card"
+            @tap="goServiceDetail(service.id)"
           >
             <view class="home-service-media">
               <view class="home-service-placeholder" />
               <image
-                v-if="isServiceImageVisible(service.key, service.image)"
+                v-if="service.imageSrc"
                 class="home-service-image"
-                :src="absoluteUrl(service.image)"
+                :src="absoluteUrl(service.imageSrc)"
                 mode="aspectFill"
                 lazy-load
-                @error="onServiceImageError(service.key)"
+                @error="onServiceImageError(service.id)"
               />
             </view>
             <view class="home-service-text">
               <text class="home-service-title">{{ service.title }}</text>
-              <text class="home-service-caption">{{ service.caption }}</text>
             </view>
           </view>
         </view>
@@ -360,7 +401,9 @@ function onQuickEntryTap(key: QuickEntryKey): void {
       </view>
     </view>
 
-    <view class="select-fab-host"><SelectFab class="select-fab-anchor" /></view>
+    <view class="select-fab-host"
+      ><SelectFab class="select-fab-anchor" :scrolling="isScrolling"
+    /></view>
   </view>
 </template>
 
@@ -624,7 +667,7 @@ function onQuickEntryTap(key: QuickEntryKey): void {
   display: flex;
   flex-direction: column;
   gap: $space-3;
-  padding: 0 $space-6 $space-10;
+  padding: $space-10 $space-6;
   box-sizing: border-box;
 }
 
@@ -634,14 +677,6 @@ function onQuickEntryTap(key: QuickEntryKey): void {
   font-weight: $font-weight-medium;
   line-height: $line-height-12;
   color: $color-navy;
-}
-
-.home-service-caption {
-  font-family: $font-family-cn;
-  font-size: $font-9;
-  font-weight: $font-weight-regular;
-  line-height: $line-height-9;
-  color: $color-text-3;
 }
 
 /* ---------------- ④ 资讯与客服 ---------------- */

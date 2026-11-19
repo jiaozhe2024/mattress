@@ -1,6 +1,9 @@
 # editor
 .history/
 
+# macOS 目录元数据
+.DS_Store
+
 # node
 node_modules/
 

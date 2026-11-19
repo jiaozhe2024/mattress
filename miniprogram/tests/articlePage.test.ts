@@ -1,7 +1,26 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { WxArticleDetail, WxArticleSummary } from "@/types/home";
+
+const SRC = path.resolve(__dirname, "..", "src");
+const LIST_PAGE_PATH = path.join(SRC, "pages", "article", "list.vue");
+const DETAIL_PAGE_PATH = path.join(SRC, "pages", "article", "detail.vue");
+
+/** 读 pages.json 中某页的 style（原生导航栏的标题/返回唯一真值源）。 */
+function pagesJsonEntry(pagePath: string): {
+  path: string;
+  style?: Record<string, unknown>;
+} {
+  const json = JSON.parse(readFileSync(path.join(SRC, "pages.json"), "utf8")) as {
+    pages: Array<{ path: string; style?: Record<string, unknown> }>;
+  };
+  const entry = json.pages.find((page) => page.path === pagePath);
+  if (!entry) throw new Error(`pages.json 未注册页面 ${pagePath}`);
+  return entry;
+}
 
 const loadOptions = vi.hoisted(() => ({ value: {} as Record<string, string> }));
 
@@ -81,24 +100,19 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("资讯列表页导航（回归：custom 导航必须自绘标题栏）", () => {
-  it("渲染二级页导航：标题「品牌资讯」+ 返回按钮", async () => {
-    const wrapper = mount(ArticleListPage);
-    await flushPromises();
-
-    expect(wrapper.find(".wnav").exists()).toBe(true);
-    expect(wrapper.find(".wnav-title").text()).toBe("品牌资讯");
-    expect(wrapper.find(".wnav-back").exists()).toBe(true);
-    expect(wrapper.find(".icon--chevron-left").exists()).toBe(true);
-    expect(wrapper.find(".wnav-brand").exists()).toBe(false);
+describe("资讯列表页导航（回归：改用原生导航栏后标题由 pages.json 下发）", () => {
+  it("pages.json 注册「品牌资讯」标题且不再自定义导航", async () => {
+    const entry = pagesJsonEntry("pages/article/list");
+    expect(entry.style?.navigationBarTitleText).toBe("品牌资讯");
+    expect(entry.style?.navigationStyle).toBeUndefined();
+    expect(readFileSync(LIST_PAGE_PATH, "utf8")).not.toContain("WechatNav");
   });
 
-  it("导航在正文之前，正文不再顶到状态栏下", async () => {
+  it("页面不再自绘导航栏（无 .wnav 节点，正文由原生导航栏托底）", async () => {
     const wrapper = mount(ArticleListPage);
     await flushPromises();
 
-    const html = wrapper.html();
-    expect(html.indexOf("wnav")).toBeLessThan(html.indexOf("class=\"body\""));
+    expect(wrapper.find(".wnav").exists()).toBe(false);
   });
 
   it("列表按接口数据渲染标题与日期", async () => {
@@ -128,25 +142,28 @@ describe("资讯列表页导航（回归：custom 导航必须自绘标题栏）
   });
 });
 
-describe("资讯详情页导航（回归：custom 导航必须自绘标题栏）", () => {
-  it("渲染二级页导航：标题「资讯详情」+ 返回按钮", async () => {
+describe("资讯详情页导航（回归：改用原生导航栏后标题由 pages.json 下发）", () => {
+  it("pages.json 注册「资讯详情」标题且不再自定义导航", async () => {
+    const entry = pagesJsonEntry("pages/article/detail");
+    expect(entry.style?.navigationBarTitleText).toBe("资讯详情");
+    expect(entry.style?.navigationStyle).toBeUndefined();
+    expect(readFileSync(DETAIL_PAGE_PATH, "utf8")).not.toContain("WechatNav");
+  });
+
+  it("详情页不再自绘导航栏", async () => {
     loadOptions.value = { id: "1" };
     const wrapper = mount(ArticleDetailPage);
     await flushPromises();
 
-    expect(wrapper.find(".wnav").exists()).toBe(true);
-    expect(wrapper.find(".wnav-title").text()).toBe("资讯详情");
-    expect(wrapper.find(".wnav-back").exists()).toBe(true);
-    expect(wrapper.find(".wnav-brand").exists()).toBe(false);
+    expect(wrapper.find(".wnav").exists()).toBe(false);
   });
 
-  it("详情加载失败时导航仍存在（错误态不遮挡返回）", async () => {
+  it("详情加载失败时页面仍可见错误提示（错误态不遮挡返回按钮外的内容）", async () => {
     loadOptions.value = { id: "1" };
     mockGetArticle.mockRejectedValue(new Error("500"));
     const wrapper = mount(ArticleDetailPage);
     await flushPromises();
 
-    expect(wrapper.find(".wnav").exists()).toBe(true);
     expect(wrapper.text()).toContain("资讯不存在或已下线");
   });
 });

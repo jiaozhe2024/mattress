@@ -2,6 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { WxProductDetail } from "@/components/product/productDetailModel";
 
 const hoisted = vi.hoisted(() => ({
@@ -109,10 +111,18 @@ afterEach(() => {
 });
 
 describe("产品详情页 V3 结构（spec.md §5.4）", () => {
-  it("二级页导航：返回箭头 + 标题 LEKASI 乐卡思", async () => {
+  // 详情页已改用原生导航栏（pages.json 去 navigationStyle:custom），
+  // 标题真值在 pages.json，页面内不再有 .wnav-* 自绘节点。
+  it("pages.json 注册「LEKASI 乐卡思」标题且页面不自绘导航栏", async () => {
+    const json = JSON.parse(
+      readFileSync(path.join(__dirname, "..", "src", "pages.json"), "utf8")
+    ) as { pages: Array<{ path: string; style?: Record<string, unknown> }> };
+    const entry = json.pages.find((page) => page.path === "pages/product/detail");
+    expect(entry?.style?.navigationBarTitleText).toBe("LEKASI 乐卡思");
+    expect(entry?.style?.navigationStyle).toBeUndefined();
+
     const wrapper = await mountPage();
-    expect(wrapper.find(".wnav-back").exists()).toBe(true);
-    expect(wrapper.find(".wnav-title").text()).toBe("LEKASI 乐卡思");
+    expect(wrapper.find(".wnav").exists()).toBe(false);
   });
 
   it("海报区：品牌行 + 产品名 23 + 副标", async () => {

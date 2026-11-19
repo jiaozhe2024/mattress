@@ -17,7 +17,6 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { getBrand } from "@/api/content";
 import Icon from "@/components/icons/Icon.vue";
-import WechatNav from "@/components/frame/WechatNav.vue";
 import {
   MINE_BRAND,
   MINE_CONTACT_LINE,
@@ -109,8 +108,6 @@ function onServiceTap(_item: ServiceItem): void {
 
 <template>
   <view class="mine">
-    <WechatNav :title="MINE_NAV_TITLE" class="nav-anchor" :data-nav-title="MINE_NAV_TITLE" />
-
     <!-- ① 品牌介绍：p4 gap4（稿内两块卡片四周留 4px 白边） -->
     <view class="mine-body">
       <!-- 关于乐卡思：bg navy px20 pt26 pb20 gap24 -->

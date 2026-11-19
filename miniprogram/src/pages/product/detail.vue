@@ -11,9 +11,9 @@
  * 数据：GET /wxapi/products/{id}（下架/不存在 404 → 错误态）。
  * 选款：useSelectionStore.addProduct（核心约定 9，禁止 storage 传参）。
  */
-import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
-import { computed, ref } from "vue";
-import { getProductDetail } from "@/api/product";
+import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
+import { computed, ref } from 'vue'
+import { getProductDetail } from '@/api/product'
 import {
   DETAIL_DISCLAIMER,
   DETAIL_ERROR_TEXT,
@@ -35,129 +35,117 @@ import {
   shareMessageOf,
   specLineOf,
   type DetailTabKey,
-  type WxProductDetail,
-} from "@/components/product/productDetailModel";
-import SafeArea from "@/components/frame/SafeArea.vue";
-import TabBar from "@/components/frame/TabBar.vue";
-import WechatNav from "@/components/frame/WechatNav.vue";
-import Icon from "@/components/icons/Icon.vue";
-import type { Product } from "@/types/product";
-import { useSelectionStore } from "@/stores/useSelectionStore";
-import { absoluteUrl, normalizeRichText } from "@/utils/url";
+  type WxProductDetail
+} from '@/components/product/productDetailModel'
+import TabBar from '@/components/frame/TabBar.vue'
+import Icon from '@/components/icons/Icon.vue'
+import type { Product } from '@/types/product'
+import { useSelectionStore } from '@/stores/useSelectionStore'
+import { absoluteUrl, normalizeRichText } from '@/utils/url'
 
-type PageStatus = "loading" | "ready" | "error";
+type PageStatus = 'loading' | 'ready' | 'error'
 
 /** 图标色镜像 token（Icon 的 color 进 SVG data URI，无法取 CSS 变量）。 */
-const ACTION_ICON_COLOR = "#4a5165";
+const ACTION_ICON_COLOR = '#4a5165'
 
-const selectionStore = useSelectionStore();
+const selectionStore = useSelectionStore()
 
-const status = ref<PageStatus>("loading");
-const product = ref<WxProductDetail | null>(null);
-const activeTab = ref<DetailTabKey>("detail");
-const activeImage = ref(0);
-const qrOpen = ref(false);
-const productId = ref<number | null>(null);
+const status = ref<PageStatus>('loading')
+const product = ref<WxProductDetail | null>(null)
+const activeTab = ref<DetailTabKey>('detail')
+const activeImage = ref(0)
+const qrOpen = ref(false)
+const productId = ref<number | null>(null)
 
 const posterImages = computed((): string[] =>
-  product.value ? posterImagesOf(product.value).map((src) => absoluteUrl(src)) : []
-);
+  product.value ? posterImagesOf(product.value).map(src => absoluteUrl(src)) : []
+)
 
-const showDots = computed((): boolean => posterImages.value.length > 1);
+const showDots = computed((): boolean => posterImages.value.length > 1)
 
 const detailImage = computed((): string =>
-  product.value ? absoluteUrl(detailImageOf(product.value)) : ""
-);
+  product.value ? absoluteUrl(detailImageOf(product.value)) : ''
+)
 
 const realImages = computed((): string[] =>
-  product.value ? realImagesOf(product.value).map((src) => absoluteUrl(src)) : []
-);
+  product.value ? realImagesOf(product.value).map(src => absoluteUrl(src)) : []
+)
 
-const featureLine = computed((): string =>
-  product.value ? featureLineOf(product.value) : ""
-);
+const featureLine = computed((): string => (product.value ? featureLineOf(product.value) : ''))
 
-const specLine = computed((): string =>
-  product.value ? specLineOf(product.value) : ""
-);
+const specLine = computed((): string => (product.value ? specLineOf(product.value) : ''))
 
-const name = computed((): string =>
-  product.value ? productNameOf(product.value) : ""
-);
+const name = computed((): string => (product.value ? productNameOf(product.value) : ''))
 
-const modelLine = computed((): string =>
-  product.value ? modelLineOf(product.value) : ""
-);
+const modelLine = computed((): string => (product.value ? modelLineOf(product.value) : ''))
 
 const detailContent = computed((): string =>
   // 富文本规范化：① <img src="/uploads/..."> 补绝对地址（<rich-text> 不会自动补
   // base，否则真机图片全不显示）② h1~h4 内联 Bold 18 navy（spec §5.4 ⑤ 小标题样式，
   // scoped CSS 管不到 rich-text 内部节点）。CC 遗留风险 ②③。
-  normalizeRichText(product.value?.detail_content ?? "")
-);
+  normalizeRichText(product.value?.detail_content ?? '')
+)
 
-onLoad((options) => {
-  const id = parseProductId(options?.id);
+onLoad(options => {
+  const id = parseProductId(options?.id)
   if (id === null) {
-    status.value = "error";
-    return;
+    status.value = 'error'
+    return
   }
-  productId.value = id;
-  void loadProduct(id);
-});
+  productId.value = id
+  void loadProduct(id)
+})
 
 onShareAppMessage(() => {
   if (!product.value) {
-    return { title: DETAIL_NAV_TITLE, path: "/pages/index/index" };
+    return { title: DETAIL_NAV_TITLE, path: '/pages/index/index' }
   }
-  const message = shareMessageOf(product.value);
+  const message = shareMessageOf(product.value)
   return {
     title: message.title,
     path: message.path,
-    ...(message.imageUrl !== undefined
-      ? { imageUrl: absoluteUrl(message.imageUrl) }
-      : null),
-  };
-});
+    ...(message.imageUrl !== undefined ? { imageUrl: absoluteUrl(message.imageUrl) } : null)
+  }
+})
 
 async function loadProduct(id: number): Promise<void> {
-  status.value = "loading";
+  status.value = 'loading'
   try {
-    product.value = await getProductDetail(id);
-    status.value = "ready";
+    product.value = await getProductDetail(id)
+    status.value = 'ready'
   } catch {
-    product.value = null;
-    status.value = "error";
+    product.value = null
+    status.value = 'error'
   }
 }
 
 function onRetry(): void {
-  if (productId.value !== null) void loadProduct(productId.value);
+  if (productId.value !== null) void loadProduct(productId.value)
 }
 
 function goBack(): void {
   uni.navigateBack({
     fail: () => {
-      uni.reLaunch({ url: "/pages/index/index" });
-    },
-  });
+      uni.reLaunch({ url: '/pages/index/index' })
+    }
+  })
 }
 
 function onDotChange(event: Event): void {
-  const detail = (event as CustomEvent<{ current: number }>).detail;
-  activeImage.value = typeof detail?.current === "number" ? detail.current : 0;
+  const detail = (event as CustomEvent<{ current: number }>).detail
+  activeImage.value = typeof detail?.current === 'number' ? detail.current : 0
 }
 
 function onTabTap(key: DetailTabKey): void {
-  activeTab.value = key;
+  activeTab.value = key
 }
 
 function onOpenQr(): void {
-  qrOpen.value = true;
+  qrOpen.value = true
 }
 
 function onCloseQr(): void {
-  qrOpen.value = false;
+  qrOpen.value = false
 }
 
 function noop(): void {
@@ -172,21 +160,19 @@ function toSelectionProduct(item: WxProductDetail): Product {
     main_image: item.main_image,
     ...(item.slogan !== null ? { slogan: item.slogan } : null),
     ...(item.spec !== null ? { spec: item.spec } : null),
-    ...(item.sleep_feel !== null ? { sleep_feel: item.sleep_feel } : null),
-  };
+    ...(item.sleep_feel !== null ? { sleep_feel: item.sleep_feel } : null)
+  }
 }
 
 function onSelect(): void {
-  if (product.value === null) return;
-  selectionStore.addProduct(toSelectionProduct(product.value));
-  uni.showToast({ title: SELECTED_TOAST, icon: "none" });
+  if (product.value === null) return
+  selectionStore.addProduct(toSelectionProduct(product.value))
+  uni.showToast({ title: SELECTED_TOAST, icon: 'none' })
 }
 </script>
 
 <template>
   <view class="pd-page">
-    <WechatNav :title="DETAIL_NAV_TITLE" back class="nav-anchor" :data-nav-title="DETAIL_NAV_TITLE" :data-nav-back="1" />
-
     <scroll-view class="pd-scroll" scroll-y :show-scrollbar="false">
       <view v-if="status === 'loading'" class="pd-state">
         <text class="pd-state-text">加载中…</text>
@@ -293,11 +279,7 @@ function onSelect(): void {
               mode="aspectFill"
             />
             <view class="pd-desc">
-              <rich-text
-                v-if="detailContent !== ''"
-                class="pd-rich"
-                :nodes="detailContent"
-              />
+              <rich-text v-if="detailContent !== ''" class="pd-rich" :nodes="detailContent" />
               <text v-else class="pd-desc-body">{{ EMPTY_DETAIL_TEXT }}</text>
               <text class="pd-desc-disclaimer">{{ DETAIL_DISCLAIMER }}</text>
             </view>
@@ -337,7 +319,6 @@ function onSelect(): void {
 
     <view class="pd-tabbar">
       <TabBar variant="two" :active="-1" />
-      <SafeArea />
     </view>
   </view>
 </template>
@@ -730,9 +711,10 @@ function onSelect(): void {
   color: $color-text-2;
 }
 
-/* ---------------- 底部 TabBar two + 安全区 ---------------- */
+/* ---------------- 底部 TabBar two + 原生安全区 ---------------- */
 .pd-tabbar {
   flex-shrink: 0;
+  // padding-bottom: env(safe-area-inset-bottom);
   background-color: $color-text-inv;
 }
 </style>

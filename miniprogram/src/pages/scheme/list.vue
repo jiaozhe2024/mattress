@@ -13,8 +13,6 @@ import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { deleteScheme, getSchemes } from "@/api/scheme";
 import type { WxSchemeListItem } from "@/api/scheme";
-import SafeArea from "@/components/frame/SafeArea.vue";
-import WechatNav from "@/components/frame/WechatNav.vue";
 import Icon from "@/components/icons/Icon.vue";
 import {
   DELETE_CONFIRM_CONTENT,
@@ -114,8 +112,6 @@ function coverSrcOf(card: SchemeCardView): string {
 
 <template>
   <view class="sl-page">
-    <WechatNav :title="LIST_NAV_TITLE" back class="nav-anchor" :data-nav-title="LIST_NAV_TITLE" :data-nav-back="1" />
-
     <scroll-view class="sl-scroll" scroll-y :show-scrollbar="false">
       <!-- 加载态 -->
       <view v-if="status === 'loading'" class="sl-state">
@@ -171,8 +167,6 @@ function coverSrcOf(card: SchemeCardView): string {
         <text class="sl-hint">{{ LIST_BOTTOM_HINT }}</text>
       </view>
     </scroll-view>
-
-    <SafeArea />
   </view>
 </template>
 
@@ -236,6 +230,7 @@ function coverSrcOf(card: SchemeCardView): string {
   gap: $space-12;
   min-height: 722px;
   padding: $space-16;
+  padding-bottom: calc(#{$space-16} + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 

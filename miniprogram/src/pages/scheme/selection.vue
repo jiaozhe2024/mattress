@@ -30,8 +30,6 @@ import {
   thumbnailsOf,
 } from "@/components/scheme/schemeSelectionModel";
 import { sleepFeelTagOf } from "@/components/product/productListModel";
-import SafeArea from "@/components/frame/SafeArea.vue";
-import WechatNav from "@/components/frame/WechatNav.vue";
 import Icon from "@/components/icons/Icon.vue";
 import { useProductList } from "@/composables/useProductList";
 import { SCHEME_EDIT_PAGE } from "@/config";
@@ -249,8 +247,6 @@ function onFooterTap(): void {
 
 <template>
   <view class="ss-page">
-    <WechatNav :title="SELECTION_NAV_TITLE" back class="nav-anchor" :data-nav-title="SELECTION_NAV_TITLE" :data-nav-back="1" />
-
     <!-- ① 搜索区域（px16 py12；框 327×36 圆角 18） -->
     <view class="ss-search-area">
       <view class="ss-search-box">
@@ -396,7 +392,6 @@ function onFooterTap(): void {
       </view>
     </view>
     <!-- 已选栏之下为页面白底安全区（基线图：navy 条下接白色手势区） -->
-    <SafeArea />
   </view>
 </template>
 
@@ -743,13 +738,14 @@ function onFooterTap(): void {
   color: $color-navy;
 }
 
-/* ---------------- ③ 已选栏 ---------------- */
+/* ---------------- ③ 已选栏（下缘含原生安全区） ---------------- */
 .ss-selected-bar {
   display: flex;
   flex-shrink: 0;
   align-items: center;
   gap: $space-10;
   padding: $space-12;
+  padding-bottom: calc(#{$space-12} + env(safe-area-inset-bottom));
   box-sizing: border-box;
   background-color: $color-navy;
 }

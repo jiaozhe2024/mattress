@@ -2,12 +2,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
-import type { WxBanner, WxCategory, WxHome } from "@/types/home";
+import type { WxArticleSummary, WxBanner, WxCategory, WxHome } from "@/types/home";
+
+const hoisted = vi.hoisted(() => ({
+  pullDownHandler: null as null | (() => void),
+}));
 
 vi.mock("@dcloudio/uni-app", () => ({
   onLoad: (callback: () => void) => {
     callback();
   },
+  onPullDownRefresh: (callback: () => void) => {
+    hoisted.pullDownHandler = callback;
+  },
+  onPageScroll: () => {},
+  onUnload: () => {},
 }));
 
 vi.mock("@/api/content", () => ({
@@ -54,8 +63,29 @@ const BANNERS: WxBanner[] = [
   { id: 12, image: "/uploads/b2.png", jump_type: 2, jump_value: "3", sort: 2 },
 ];
 
+function makeService(
+  id: number,
+  title: string,
+  overrides: Partial<WxArticleSummary> = {}
+): WxArticleSummary {
+  return {
+    id,
+    title,
+    category: "service",
+    cover: null,
+    create_time: null,
+    ...overrides,
+  };
+}
+
+const SERVICES: WxArticleSummary[] = [
+  makeService(31, "产品认识"),
+  makeService(32, "睡眠小课堂"),
+  makeService(33, "到店体验"),
+];
+
 function makeHome(banners: WxBanner[] = BANNERS): WxHome {
-  return { banners, categories: CATEGORIES, services: [] };
+  return { banners, categories: CATEGORIES, services: SERVICES };
 }
 
 function uniStub(): Record<string, unknown> {
@@ -72,6 +102,7 @@ function uniStub(): Record<string, unknown> {
     switchTab: vi.fn(),
     navigateTo: vi.fn(),
     showToast: vi.fn(),
+    stopPullDownRefresh: vi.fn(),
   };
 }
 
@@ -90,6 +121,7 @@ beforeEach(() => {
 
 afterEach(() => {
   delete (globalThis as { uni?: unknown }).uni;
+  hoisted.pullDownHandler = null;
   vi.clearAllMocks();
 });
 
@@ -173,7 +205,7 @@ describe("首页 V3 结构（spec.md §5.1 + Q14/Q15/Q16）", () => {
     ]);
   });
 
-  it("好眠服务：标题 + 3 张卡（标题/说明）", async () => {
+  it("好眠服务：标题 + 3 张卡（标题取自 services）", async () => {
     const wrapper = await mountHome();
     expect(wrapper.find(".home-services-title").text()).toBe("乐卡思 · 好眠服务");
     expect(wrapper.findAll(".home-service-card")).toHaveLength(3);
@@ -182,9 +214,16 @@ describe("首页 V3 结构（spec.md §5.1 + Q14/Q15/Q16）", () => {
       "睡眠小课堂",
       "到店体验",
     ]);
-    expect(
-      wrapper.findAll(".home-service-caption").map((el) => el.text())
-    ).toEqual(["了解面料与结构", "找到适合的睡感", "亲自感受舒适"]);
+  });
+
+  it("好眠服务无数据时整块不渲染", async () => {
+    mockGetHome.mockResolvedValue({
+      banners: BANNERS,
+      categories: CATEGORIES,
+      services: [],
+    });
+    const wrapper = await mountHome();
+    expect(wrapper.find(".home-services").exists()).toBe(false);
   });
 
   it("快捷入口 2 个：乐卡思资讯 / 联系客服", async () => {
@@ -248,6 +287,17 @@ describe("首页交互", () => {
     expect(url.searchParams.get("keyword")).toBe("9B");
   });
 
+  it("点服务卡：跳对应文章详情页", async () => {
+    const wrapper = await mountHome();
+    const uni = (globalThis as {
+      uni: { navigateTo: ReturnType<typeof vi.fn> };
+    }).uni;
+    await wrapper.findAll(".home-service-card")[1].trigger("tap");
+    expect(uni.navigateTo).toHaveBeenCalledWith({
+      url: "/pages/article/detail?id=32",
+    });
+  });
+
   it("点「乐卡思资讯」跳已建资讯列表页（不弹 toast）", async () => {
     const wrapper = await mountHome();
     const uni = (globalThis as {
@@ -280,6 +330,71 @@ describe("首页交互", () => {
     expect(uni.showToast).toHaveBeenCalledWith(
       expect.objectContaining({ title: "客服暂不可用，请稍后再试" })
     );
+  });
+});
+
+describe("首页下拉刷新", () => {
+  it("onPullDownRefresh 触发重新拉取首页数据并收起刷新动画", async () => {
+    await mountHome();
+    expect(hoisted.pullDownHandler).toBeTypeOf("function");
+    mockGetHome.mockClear();
+    mockGetCategories.mockClear();
+
+    hoisted.pullDownHandler?.();
+    await flushPromises();
+
+    const uni = (globalThis as {
+      uni: { stopPullDownRefresh: ReturnType<typeof vi.fn> };
+    }).uni;
+    expect(mockGetHome).toHaveBeenCalledTimes(1);
+    expect(mockGetCategories).toHaveBeenCalledTimes(1);
+    expect(uni.stopPullDownRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("刷新失败也收起刷新动画（不残留 loading）", async () => {
+    await mountHome();
+    mockGetHome.mockRejectedValue(new Error("500"));
+    mockGetCategories.mockRejectedValue(new Error("500"));
+
+    hoisted.pullDownHandler?.();
+    await flushPromises();
+
+    const uni = (globalThis as {
+      uni: { stopPullDownRefresh: ReturnType<typeof vi.fn> };
+    }).uni;
+    expect(uni.stopPullDownRefresh).toHaveBeenCalledTimes(1);
+    expect(hoisted.pullDownHandler).toBeTypeOf("function");
+  });
+  it("刷新失败不打断已渲染内容（不退回错误态/不回退列表）", async () => {
+    const wrapper = await mountHome();
+    mockGetHome.mockRejectedValue(new Error("500"));
+    mockGetCategories.mockRejectedValue(new Error("500"));
+
+    hoisted.pullDownHandler?.();
+    await flushPromises();
+
+    expect(wrapper.findAll(".home-series-card")).toHaveLength(4);
+    expect(wrapper.text()).not.toContain("首页内容加载失败");
+  });
+
+  it("刷新期间不闪整页「加载中…」", async () => {
+    const wrapper = await mountHome();
+    let resolveHome!: (value: WxHome) => void;
+    mockGetHome.mockReturnValue(
+      new Promise<WxHome>((resolve) => {
+        resolveHome = resolve;
+      })
+    );
+    mockGetCategories.mockReturnValue(new Promise(() => {}));
+
+    hoisted.pullDownHandler?.();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).not.toContain("加载中…");
+    expect(wrapper.findAll(".home-series-card")).toHaveLength(4);
+
+    resolveHome(makeHome());
+    await flushPromises();
   });
 });
 

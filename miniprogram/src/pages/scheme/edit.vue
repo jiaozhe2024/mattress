@@ -29,8 +29,6 @@ import {
   type SchemeActionButtonConfig,
 } from "@/components/scheme/schemeEditModel";
 import { createScheme, getSchemeDetail, updateScheme } from "@/api/scheme";
-import SafeArea from "@/components/frame/SafeArea.vue";
-import WechatNav from "@/components/frame/WechatNav.vue";
 import Icon from "@/components/icons/Icon.vue";
 import {
   SCHEME_LIST_PAGE,
@@ -243,8 +241,6 @@ function onAction(button: SchemeActionButtonConfig): void {
 
 <template>
   <view class="se-page">
-    <WechatNav :title="EDIT_NAV_TITLE" back class="nav-anchor" :data-nav-title="EDIT_NAV_TITLE" :data-nav-back="1" />
-
     <scroll-view class="se-scroll" scroll-y :show-scrollbar="false">
       <view class="se-body">
         <!-- ① 方案标题输入：h48，下边框 1px line，右侧 pencil 16×16 -->
@@ -346,7 +342,6 @@ function onAction(button: SchemeActionButtonConfig): void {
         <text class="se-action-text">{{ button.label }}</text>
       </view>
     </view>
-    <SafeArea />
   </view>
 </template>
 
@@ -573,13 +568,14 @@ function onAction(button: SchemeActionButtonConfig): void {
   color: $color-text-1;
 }
 
-/* ④ 底部操作条：bg navy p14 gap8 */
+/* ④ 底部操作条：bg navy p14 gap8（下缘含原生安全区） */
 .se-actions {
   display: flex;
   flex-shrink: 0;
   align-items: center;
   gap: $space-8;
   padding: $space-8 + $space-6;
+  padding-bottom: calc(#{$space-8 + $space-6} + env(safe-area-inset-bottom));
   box-sizing: border-box;
   background-color: $color-navy;
 }

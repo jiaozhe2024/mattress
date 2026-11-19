@@ -3,9 +3,9 @@
  *
  * 真值来源：docs/design/design-spec/spec.md §5.1 + docs/design/open-questions.md Q14/Q15。
  * 抽出纯函数便于 vitest 覆盖：系列卡取前 4、双通道渲染（图片优先/文字降级）、
- * 轮播指示点数量（仅 1 张时隐藏）。
+ * 好眠服务卡取前 3（数据源 /wxapi/home services）、轮播指示点数量（仅 1 张时隐藏）。
  */
-import type { WxCategory } from "@/types/home";
+import type { WxArticleSummary, WxCategory } from "@/types/home";
 
 /** 2×2 系列卡最多展示条数（sort 1-4）。 */
 export const SERIES_CARD_LIMIT = 4;
@@ -26,19 +26,36 @@ export const BEDDING_ENTRIES: readonly BeddingEntry[] = [
 /** 好眠服务区块标题（spec.md §5.1 ③）。 */
 export const HOME_SERVICE_TITLE = "乐卡思 · 好眠服务";
 
-export interface HomeServiceCard {
-  key: string;
+/** 首页好眠服务卡最多展示条数（与 design 稿一致）。 */
+export const HOME_SERVICE_LIMIT = 3;
+
+/** 服务卡视图：cover 可用时返回图片路径，否则为 null（渲染占位层）。 */
+export interface ServiceCardView {
+  id: number;
   title: string;
-  caption: string;
-  /** 服务图 URL；asset-inventory「首页服务图 ×3」真实素材待补，空字符串走占位层。 */
-  image: string;
+  imageSrc: string | null;
 }
 
-export const HOME_SERVICE_CARDS: readonly HomeServiceCard[] = [
-  { key: "product", title: "产品认识", caption: "了解面料与结构", image: "" },
-  { key: "sleep", title: "睡眠小课堂", caption: "找到适合的睡感", image: "" },
-  { key: "store", title: "到店体验", caption: "亲自感受舒适", image: "" },
-];
+/**
+ * 生成服务卡视图（数据源：GET /wxapi/home 的 services，即 category=service 的已发布文章）。
+ * 后端按 id 升序返回，此处取前 limit 条；卡片只渲染标题。
+ */
+export function serviceCardViewsOf(
+  services: readonly WxArticleSummary[],
+  failedIds: readonly number[] = [],
+  limit: number = HOME_SERVICE_LIMIT
+): ServiceCardView[] {
+  const safeLimit = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : 0;
+  return services.slice(0, safeLimit).map((service) => {
+    const cover = (service.cover ?? "").trim();
+    const useImage = cover !== "" && !failedIds.includes(service.id);
+    return {
+      id: service.id,
+      title: service.title,
+      imageSrc: useImage ? cover : null,
+    };
+  });
+}
 
 export type QuickEntryKey = "news" | "contact";
 
