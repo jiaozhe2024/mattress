@@ -1,0 +1,132 @@
+# =============================================================================
+# Nginx 配置示例 —— 管理后台前端（Vue3 + Vite 静态站点）
+#
+# 与 nginx.conf.example（后端 API）的区别：
+#   - 后端那份：upstream 反代到 uvicorn，接口用
+#   - 本份：只发静态文件，另外把 /api 和 /uploads 反代到后端做到「同源」
+#
+# 为什么必须既发静态又反代 API：
+#   后台生产配置 VITE_API_BASE_URL=/api/v1 是**相对路径**（见 admin/.env.production），
+#   即浏览器向后台自己的域名发请求。若不反代，/api/... 会 404。
+#   这样做的好处是前端无需知道后端域名，也没有跨域问题。
+#
+# 用法：
+#   1. 复制为 /etc/nginx/sites-available/mattress-admin
+#   2. 替换 admin.example.com 为真实域名
+#   3. ln -s 到 sites-enabled；nginx -t && systemctl reload nginx
+# =============================================================================
+
+upstream mattress_api_admin {
+    server 127.0.0.1:8000;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    server_name admin.example.com;
+
+    # 静态站点根目录（build-admin.sh --deploy 的 WEB_ROOT）
+    root /var/www/mattress-admin;
+    index index.html;
+
+    client_max_body_size 20m;   # 与后端上传上限对齐
+
+    access_log /var/log/nginx/mattress-admin.access.log;
+    error_log  /var/log/nginx/mattress-admin.error.log;
+
+    # ---------------------------------------------------------------
+    # 1) 静态资源
+    # Vite 产物文件名带内容 hash（index-a1b2c3.js），可长期强缓存；
+    # index.html 绝不能缓存，否则发版后用户仍加载旧入口。
+    # ---------------------------------------------------------------
+    location /assets/ {
+        # 只用 add_header 统一输出，避免 expires 再注入一个 Cache-Control 造成重复头
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        access_log off;
+        try_files $uri =404;
+    }
+
+    location = /index.html {
+        # 不要用 expires -1：它会额外注入一个 "Cache-Control: no-cache"，
+        # 和下面的 add_header 叠加成两个 Cache-Control 头（实测确认）。
+        # 只保留 add_header，语义更明确。
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        etag off;
+        if_modified_since off;
+    }
+
+    # ---------------------------------------------------------------
+    # 2) 前端路由（必须）
+    # 路由用 createWebHistory()（HTML5 history 模式），
+    # 访问 /data/wx-user 时服务器上并没有这个文件 —— 必须回退到 index.html
+    # 交给前端路由处理，否则刷新页面直接 404。
+    # ---------------------------------------------------------------
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # ---------------------------------------------------------------
+    # 3) 接口反代（同源，无跨域）
+    # 前端 VITE_API_BASE_URL=/api/v1 → 必须转发到后端，否则 404
+    # ---------------------------------------------------------------
+    location /api/ {
+        proxy_pass http://mattress_api_admin;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection        "";
+        proxy_connect_timeout 30s;
+        proxy_send_timeout    60s;
+        proxy_read_timeout    60s;
+    }
+
+    # ---------------------------------------------------------------
+    # 4) 上传图片（同源）
+    # 后端返回相对 URL /uploads/xxx.png，编辑器/图片预览直接用它，
+    # 不走后端域名，所以这里也要转发。
+    # ---------------------------------------------------------------
+    location /uploads/ {
+        proxy_pass http://mattress_api_admin;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    # ---------------------------------------------------------------
+    # 5) 接口文档（可选）
+    # 后端 /docs 有 HTTP Basic 登录（SWAGGER_UI_USERNAME/PASSWORD）。
+    # 若不希望暴露到公网，直接删掉这段。
+    # ---------------------------------------------------------------
+    location /docs {
+        proxy_pass http://mattress_api_admin;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+    location /openapi.json {
+        proxy_pass http://mattress_api_admin;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    # 管理后台是敏感入口，建议额外加访问限制（二选一）：
+    #
+    # 方式 A：IP 白名单（简单，适合固定办公网）
+    # location / {
+    #     allow 203.0.113.0/24;   # 公司出口 IP
+    #     allow 198.51.100.7;     # 运维家宽
+    #     deny all;
+    #     try_files $uri $uri/ /index.html;
+    # }
+    #
+    # 方式 B：加一层 HTTP Basic（对外网开放时至少做个门槛）
+    #     sudo apt install -y apache2-utils
+    #     sudo htpasswd -c /etc/nginx/.htpasswd adminuser
+    # location / {
+    #     auth_basic "Restricted";
+    #     auth_basic_user_file /etc/nginx/.htpasswd;
+    #     try_files $uri $uri/ /index.html;
+    # }
+}

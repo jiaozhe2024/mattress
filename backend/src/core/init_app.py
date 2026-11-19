@@ -86,16 +86,29 @@ async def init_superuser():
     async with db_session() as session:
         exists = await session.scalar(select(User.id).limit(1))
         if exists is None:
+            # 初始密码从环境变量读取。硬编码弱口令 + 打进日志是安全隐患：
+            # 每次全新部署都会重建 admin/abcd1234，且日志明文可被读日志的人看到。
+            # 未配置 ADMIN_INIT_PASSWORD 时退回开发默认值并大声警告。
+            import os
+
+            init_password = os.getenv("ADMIN_INIT_PASSWORD", "").strip()
+            if not init_password:
+                init_password = "abcd1234"
+                logger.warning(
+                    "⚠️ 未配置 ADMIN_INIT_PASSWORD，已使用开发默认口令创建超级管理员。"
+                    "生产环境请设置该环境变量后重新初始化，或登录后立即改密。"
+                )
             await user_repository.create_user(
                 UserCreate(
                     username="admin",
                     email="admin@admin.com",
-                    password="abcd1234",
+                    password=init_password,
                     is_active=True,
                     is_superuser=True,
                 )
             )
-            logger.info("✅ 超级管理员用户创建成功 - 用户名: admin / 密码: abcd1234")
+            # 日志不打印密码本身
+            logger.info("✅ 超级管理员用户创建成功 - 用户名: admin（密码取自 ADMIN_INIT_PASSWORD）")
         else:
             logger.info("ℹ️ 超级管理员用户已存在，跳过创建")
 

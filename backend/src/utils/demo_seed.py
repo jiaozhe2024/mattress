@@ -313,13 +313,29 @@ DEMO_BANNERS: list[dict] = [
     },
 ]
 
-# ---------------- 2 篇文章（1 服务板块 + 1 宝顿资讯） ----------------
+# ---------------- 4 篇文章（3 服务板块 + 1 宝顿资讯） ----------------
+# service 三篇即首页「乐卡思 · 好眠服务」三张卡（spec.md §5.1 ③），
+# 首页按 id 升序取前 3 条渲染，此处顺序即展示顺序。
 DEMO_ARTICLES: list[dict] = [
     {
-        "title": "免费床垫除螨保养服务",
+        "title": "产品认识",
         "category": str(ArticleCategory.SERVICE),
-        "cover": "/uploads/demo/article-service-cover.jpg",
-        "content": "<p>购买任意特制床垫，享每年 2 次免费上门除螨保养服务（seed 演示文案）。</p>",
+        "cover": None,
+        "content": "<p>了解面料与结构（seed 演示文案，正式内容由运营在 Admin 维护）。</p>",
+        "status": 1,
+    },
+    {
+        "title": "睡眠小课堂",
+        "category": str(ArticleCategory.SERVICE),
+        "cover": None,
+        "content": "<p>找到适合的睡感（seed 演示文案，正式内容由运营在 Admin 维护）。</p>",
+        "status": 1,
+    },
+    {
+        "title": "到店体验",
+        "category": str(ArticleCategory.SERVICE),
+        "cover": None,
+        "content": "<p>亲自感受舒适（seed 演示文案，正式内容由运营在 Admin 维护）。</p>",
         "status": 1,
     },
     {

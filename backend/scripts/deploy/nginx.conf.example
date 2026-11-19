@@ -53,8 +53,8 @@ server {
         proxy_pass http://mattress_api;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
-        expires 7d;
-        add_header Cache-Control "public";
+        # 只用 add_header，避免 expires 注入第二个 Cache-Control
+        add_header Cache-Control "public, max-age=604800" always;
     }
 }
 

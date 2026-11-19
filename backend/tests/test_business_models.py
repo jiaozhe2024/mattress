@@ -183,7 +183,7 @@ async def test_seed_demo_data_counts_and_idempotency():
         jump_types = {b.jump_type for b in banners}
         assert len(jump_types) == 2, "banner 必须覆盖不同 jump_type"
         assert jump_types <= {member.value for member in BannerJumpType}
-        assert articles == 2
+        assert articles == 4  # 3 篇服务板块（首页好眠服务卡）+ 1 篇资讯
         assert brands == 1
 
         # 二次执行：幂等跳过，数量不变

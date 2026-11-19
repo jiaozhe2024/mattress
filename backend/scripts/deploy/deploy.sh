@@ -93,6 +93,14 @@ check_nonempty DB_PASSWORD "数据库密码" 1 || ENV_FAIL=1
 # 接口文档（/docs）的登录密码。后端 field_validator 强制要求，漏填会启动失败。
 check_nonempty SWAGGER_UI_USERNAME "接口文档访问账号" 1 || ENV_FAIL=1
 check_nonempty SWAGGER_UI_PASSWORD "接口文档访问密码（至少 8 位）" 8 || ENV_FAIL=1
+# 首次建库时创建的超管口令。不强制失败（有开发默认值），但不设就是弱口令上线。
+ADMIN_PW=$(grep -E "^ADMIN_INIT_PASSWORD=" "${APP_DIR}/.env" | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true)
+if [ "${#ADMIN_PW}" -lt 8 ]; then
+    printf '\033[1;33m  ! ADMIN_INIT_PASSWORD 未设置或过短 —— 首次启动会建出 admin/abcd1234 弱口令账号\033[0m\n'
+    printf '    建议：在 .env 里加 ADMIN_INIT_PASSWORD=<openssl rand -base64 18 的结果>\n'
+else
+    printf '  ✓ ADMIN_INIT_PASSWORD 已设置\n'
+fi
 
 if grep -qE "^CORS_ORIGINS=.*localhost" "${APP_DIR}/.env"; then
     printf '\033[1;31m  ✗ CORS_ORIGINS 不能包含 localhost —— 改成你的后台域名\033[0m\n'

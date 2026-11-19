@@ -495,7 +495,7 @@ class TestArticles:
         resp = await async_client.get(f"{ADMIN}/articles", headers=auth_headers)
         assert resp.status_code == 200, resp.text
         data = resp.json()["data"]
-        assert data["total"] == 2
+        assert data["total"] == 4
         # 列表不带富文本 content
         assert all(item["content"] is None for item in data["items"])
         # 详情带富文本

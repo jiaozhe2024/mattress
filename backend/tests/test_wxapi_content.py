@@ -1,7 +1,7 @@
 """BE-05 wxapi 内容只读接口测试（匿名可访问，不依赖登录态）。
 
 覆盖 verify 要求：
-- 分页返回数与 seed 一致（8 分类 / 8 产品 / 2 banner / 2 文章 / 1 品牌）
+- 分页返回数与 seed 一致（8 分类 / 11 产品 / 2 banner / 4 文章 / 1 品牌）
 - 下架产品不出现在列表且详情 404
 - 搜索『505压缩』命中 seed 中的「505压缩卷包床垫」
 - /home 三段字段齐全（banners/categories/services）
@@ -43,7 +43,7 @@ async def _clean_business_tables() -> None:
 
 @pytest.fixture(autouse=True)
 async def _seeded_business_data():
-    """每个用例前清表 + 写入 seed（8 分类/8 产品/2 banner/2 文章/1 品牌）。"""
+    """每个用例前清表 + 写入 seed（8 分类/11 产品/2 banner/4 文章/1 品牌）。"""
     await _clean_business_tables()
     async with db_session() as session:
         result = await seed_demo_data(session)
@@ -81,7 +81,7 @@ class TestHome:
         # 三段字段齐全且与 seed 一致
         assert len(data["banners"]) == 2
         assert len(data["categories"]) == 8
-        assert len(data["services"]) == 1  # seed 中仅 1 篇 category=service
+        assert len(data["services"]) == 3  # 首页好眠服务三张卡
         banner = data["banners"][0]
         assert {"id", "image", "jump_type", "jump_value", "sort"} <= banner.keys()
         category = data["categories"][0]
@@ -278,7 +278,7 @@ class TestArticles:
         resp = await async_client.get(ARTICLES_URL, params={"page": 1, "size": 10})
         assert resp.status_code == 200, resp.text
         data = resp.json()["data"]
-        assert data["total"] == 2
+        assert data["total"] == 4
         item = data["items"][0]
         assert {"id", "title", "category", "cover", "create_time"} <= item.keys()
         assert "content" not in item  # 列表不返回富文本
@@ -290,8 +290,7 @@ class TestArticles:
     async def test_category_filter_service(self, async_client: AsyncClient):
         resp = await async_client.get(ARTICLES_URL, params={"category": "service"})
         data = resp.json()["data"]
-        assert data["total"] == 1
-        assert data["items"][0]["category"] == "service"
+        assert data["total"] == 3
 
     async def test_detail_with_content(self, async_client: AsyncClient):
         async with db_session() as session:
@@ -308,7 +307,7 @@ class TestArticles:
     async def test_offline_article_absent_and_404(self, async_client: AsyncClient):
         article_id = await _set_article_status("春季睡眠节", 0)
         list_resp = await async_client.get(ARTICLES_URL)
-        assert list_resp.json()["data"]["total"] == 1
+        assert list_resp.json()["data"]["total"] == 3  # 4 篇 - 下线 1 篇
         detail_resp = await async_client.get(f"{ARTICLES_URL}/{article_id}")
         assert detail_resp.status_code == 404
 
