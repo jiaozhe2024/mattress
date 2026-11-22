@@ -34,7 +34,7 @@ RUN chmod +x /scripts/docker-entrypoint.sh
 # 创建必要的目录并切换到非 root 用户运行
 RUN groupadd -r app && \
     useradd -r -g app -d /app -s /sbin/nologin app && \
-    mkdir -p /app/logs /app/static /app/migrations && \
+    mkdir -p /app/logs /app/static /app/migrations /app/uploads && \
     chown -R app:app /app /scripts
 
 USER app

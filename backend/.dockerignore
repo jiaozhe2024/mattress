@@ -30,6 +30,11 @@ env
 ENV
 .venv
 .env
+.env.*
+admin/node_modules
+admin/dist
+admin/.env*
+uploads
 
 # IDE
 .vscode
