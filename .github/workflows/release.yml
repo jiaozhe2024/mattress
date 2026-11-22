@@ -1,0 +1,96 @@
+name: Publish images
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+  actions: write
+
+concurrency:
+  group: publish-main
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  publish:
+    name: Publish GHCR images
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout tested revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Normalize image prefix
+        id: image
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "prefix=${REGISTRY}/$(printf '%s' "$REPOSITORY" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        id: backend-image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.image.outputs.prefix }}/backend-web:sha-${{ github.event.workflow_run.head_sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha,scope=backend-web
+          cache-to: type=gha,mode=max,scope=backend-web
+
+      - name: Build and push admin image
+        id: admin-image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend/admin
+          file: ./backend/admin/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.image.outputs.prefix }}/backend-admin:sha-${{ github.event.workflow_run.head_sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha,scope=backend-admin
+          cache-to: type=gha,mode=max,scope=backend-admin
+
+      - name: Publish image references and digests
+        env:
+          IMAGE_PREFIX: ${{ steps.image.outputs.prefix }}
+          REVISION: ${{ github.event.workflow_run.head_sha }}
+          BACKEND_DIGEST: ${{ steps.backend-image.outputs.digest }}
+          ADMIN_DIGEST: ${{ steps.admin-image.outputs.digest }}
+        run: |
+          {
+            echo '## Published images'
+            echo
+            echo "Revision: \\`${REVISION}\\`"
+            echo
+            echo "- \\`${IMAGE_PREFIX}/backend-web:sha-${REVISION}\\`"
+            echo "  Digest: \\`${BACKEND_DIGEST}\\`"
+            echo "- \\`${IMAGE_PREFIX}/backend-admin:sha-${REVISION}\\`"
+            echo "  Digest: \\`${ADMIN_DIGEST}\\`"
+            echo
+            echo 'Use the SHA tags for deployment.'
+          } >> "$GITHUB_STEP_SUMMARY"

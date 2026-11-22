@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: 'latest'
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --locked --group dev
+
+      - name: Run tests with coverage
+        run: uv run pytest --cov=src --cov-report=term-missing
+        env:
+          APP_ENV: testing
+          TESTING: 'true'
+          DB_ENGINE: sqlite
+          SECRET_KEY: test_secret_key_for_ci_only_32_chars_long
+          WX_CODE2SESSION_MOCK: 'true'
+
+      - name: Check lint
+        run: uv run ruff check src tests
+
+      - name: Check types
+        run: uv run mypy src
+
+      - name: Run security scan
+        run: uv run bandit -r src/
+
+  admin:
+    name: Admin
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend/admin
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Build admin
+        run: npm run build
+
+  miniprogram:
+    name: Miniprogram
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: miniprogram
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: miniprogram/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check types
+        run: npm run type-check
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build WeChat miniprogram
+        run: npm run build:mp-weixin
+
+      - name: Upload WeChat build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: miniprogram-mp-weixin-${{ github.sha }}
+          path: miniprogram/dist/build/mp-weixin
+          if-no-files-found: error
+          retention-days: 14
