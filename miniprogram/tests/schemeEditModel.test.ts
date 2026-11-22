@@ -40,7 +40,7 @@ describe("方案编辑页文案常量（spec.md §5.5 / §5.7，逐字固定）"
 });
 
 describe("Q3：三按钮为一份可配 variant 配置", () => {
-  it("顺序/文案/宽度与画板一致（我的方案 108 / 保存 92 / 预览分享 119）", () => {
+  it("顺序和文案与设计一致，宽度由布局决定", () => {
     expect(SCHEME_ACTION_BUTTONS.map((btn) => btn.key)).toEqual([
       "mine",
       "save",
@@ -51,7 +51,7 @@ describe("Q3：三按钮为一份可配 variant 配置", () => {
       "保存",
       "预览分享",
     ]);
-    expect(SCHEME_ACTION_BUTTONS.map((btn) => btn.width)).toEqual([108, 92, 119]);
+    expect(SCHEME_ACTION_BUTTONS.every((btn) => !("width" in btn))).toBe(true);
   });
 
   it("本轮照稿等权重：我的方案 secondary，保存/预览分享 primary", () => {

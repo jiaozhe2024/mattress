@@ -106,12 +106,6 @@ function onBack(): void {
   });
 }
 
-/** 立即分享：交给微信转发面板，成功后计数 +1。 */
-function onShareTap(): void {
-  // 小程序不支持编程式拉起转发面板，引导用户用右上角菜单或点按钮触发开放能力。
-  uni.showToast({ title: "请点击右上角 ··· 转发给好友", icon: "none" });
-}
-
 /** 转发内容：path 带 id，好友打开走 public 只读。 */
 onShareAppMessage((res) => {
   const id = schemeId.value;
@@ -197,11 +191,11 @@ onShareAppMessage((res) => {
           {{ PREVIEW_BACK_LABEL }}
         </text>
       </view>
-      <view class="sp-action sp-action--primary" @tap="onShareTap">
+      <button class="sp-action sp-action--primary" open-type="share">
         <text class="sp-action-text sp-action-text--primary">
           {{ PREVIEW_SHARE_LABEL }}
         </text>
-      </view>
+      </button>
     </view>
   </view>
 </template>
@@ -386,23 +380,22 @@ onShareAppMessage((res) => {
 
 .sp-action {
   display: flex;
+  flex: 1;
+  min-width: 0;
   align-items: center;
   justify-content: center;
-  height: 42px;
+  align-self: stretch;
+  padding: $space-12 $space-8;
   border-radius: $radius-20;
   box-sizing: border-box;
 }
 
-/* 返回 146×42 白底描边 */
 .sp-action--secondary {
-  width: 146px;
   border: 1px solid $color-navy-50;
   background-color: $color-text-inv;
 }
 
-/* 立即分享 189×42 bg yellow */
 .sp-action--primary {
-  width: 189px;
   background-color: $color-yellow;
 }
 

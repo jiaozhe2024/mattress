@@ -53,8 +53,6 @@ export type SchemeActionTone = "primary" | "secondary";
 export interface SchemeActionButtonConfig {
   key: "mine" | "save" | "preview";
   label: string;
-  /** 设计稿宽度（px）：108 / 92 / 119。 */
-  width: number;
   tone: SchemeActionTone;
 }
 
@@ -63,9 +61,9 @@ export interface SchemeActionButtonConfig {
  * 黄色主按钮（primary）。优化阶段（Q3）只改 tone 即可，结构/尺寸/路由不动。
  */
 export const SCHEME_ACTION_BUTTONS: ReadonlyArray<SchemeActionButtonConfig> = [
-  { key: "mine", label: "我的方案", width: 108, tone: "secondary" },
-  { key: "save", label: "保存", width: 92, tone: "primary" },
-  { key: "preview", label: "预览分享", width: 119, tone: "primary" },
+  { key: "mine", label: "我的方案", tone: "secondary" },
+  { key: "save", label: "保存", tone: "primary" },
+  { key: "preview", label: "预览分享", tone: "primary" },
 ];
 
 /** 产品数量文案：`产品数量：N`（非法/负数归零）。 */

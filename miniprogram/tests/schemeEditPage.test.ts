@@ -157,7 +157,7 @@ describe("方案编辑页 · 空态（spec.md §5.5）", () => {
     expect(wrapper.find(".se-remark").exists()).toBe(false);
   });
 
-  it("底部操作条三个按钮：我的方案 / 保存 / 预览分享，宽度 108/92/119", async () => {
+  it("底部操作条三个按钮：我的方案 / 保存 / 预览分享，宽度自适应", async () => {
     const wrapper = await mountPage();
     const actions = wrapper.findAll(".se-action");
     expect(actions).toHaveLength(3);
@@ -166,12 +166,8 @@ describe("方案编辑页 · 空态（spec.md §5.5）", () => {
       "保存",
       "预览分享",
     ]);
-    // inline style 序列化后为 "width: 108px;"（冒号后有空格），容错匹配两种写法
-    const styleOf = (a) => (a.attributes("style") || "").replace(/\s+/g, "");
-    const styles = actions.map(styleOf);
-    expect(styles[0]).toContain("width:108px");
-    expect(styles[1]).toContain("width:92px");
-    expect(styles[2]).toContain("width:119px");
+    // 按钮宽度由容器布局自适应，不再通过 inline style 固定像素宽度。
+    expect(actions.every((action) => !action.attributes("style"))).toBe(true);
   });
 
   it("Q3：我的方案为 secondary，保存/预览分享为 primary（一份配置驱动）", async () => {

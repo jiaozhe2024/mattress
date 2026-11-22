@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { WxSchemeProduct } from "@/api/scheme";
 import {
   PREVIEW_FOOTNOTE,
@@ -8,6 +10,18 @@ import {
   previewShareTitleOf,
   previewViewsOf,
 } from "@/components/scheme/schemePreviewModel";
+
+const previewPage = readFileSync(path.resolve(__dirname, "../src/pages/scheme/preview.vue"), "utf8");
+
+it("立即分享使用微信原生分享按钮，不显示引导提示", () => {
+  expect(previewPage).toMatch(/<button\b[^>]*class="sp-action sp-action--primary"[^>]*open-type="share"/);
+  expect(previewPage).not.toContain("请点击右上角");
+});
+
+it("底部按钮按容器宽度自适应", () => {
+  expect(previewPage).toMatch(/\.sp-action\s*\{[^}]*flex:\s*1/);
+  expect(previewPage).not.toMatch(/\.sp-action(?:--secondary|--primary)?\s*\{[^}]*(?:width|height):\s*\d+px/);
+});
 
 function row(
   sort: number,

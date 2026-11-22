@@ -336,7 +336,6 @@ function onAction(button: SchemeActionButtonConfig): void {
         :key="button.key"
         class="se-action"
         :class="`se-action--${button.tone}`"
-        :style="`width:${button.width}px;`"
         @tap="onAction(button)"
       >
         <text class="se-action-text">{{ button.label }}</text>
@@ -583,6 +582,8 @@ function onAction(button: SchemeActionButtonConfig): void {
 /* Q3：三个按钮同结构，仅按 tone 分发样式 */
 .se-action {
   display: flex;
+  flex: 1;
+  min-width: 0;
   align-items: center;
   justify-content: center;
   height: 42px;
