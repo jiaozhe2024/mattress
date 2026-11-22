@@ -1,7 +1,7 @@
 [project]
 name = "mattress-ux-backend"
 version = "2.0.0"
-description = "床垫选品方案小程序后端基座（FastAPI + SQLModel + MySQL8 + Redis + arq）"
+description = "床垫选品方案小程序后端基座（FastAPI + SQLModel + MySQL8 + Redis）"
 authors = [
     {name = "mattress-ux"}
 ]
@@ -10,7 +10,7 @@ requires-python = ">=3.12"
 keywords = [
     "fastapi", "backend", "rbac",
     "三层架构", "权限管理", "SQLModel", "MySQL",
-    "async", "jwt", "arq", "redis",
+    "async", "jwt", "redis",
     "swagger", "openapi", "production-ready",
     "scalable", "secure", "modern", "clean-architecture",
 ]
@@ -26,7 +26,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Application Frameworks",
 ]
 
-# 基座沿用 FastAPI-Template(MIT) 的分层/RBAC/JWT/arq 语义，ORM 层替换为 SQLModel + asyncmy(MySQL8)
+# 基座沿用 FastAPI-Template(MIT) 的分层/RBAC/JWT 语义，ORM 层替换为 SQLModel + asyncmy(MySQL8)
 dependencies = [
     "fastapi>=0.100.0",
     "sqlmodel>=0.0.22",
@@ -46,7 +46,7 @@ dependencies = [
     "redis>=4.5.0",
     "prometheus-client>=0.20.0",
     "sentry-sdk[fastapi]>=2.0.0",
-    "arq>=0.26.0",
+
     "alembic>=1.13.0",
 ]
 
@@ -193,7 +193,7 @@ module = [
     "asyncmy.*",
     "aiosqlite.*",
     "loguru.*",
-    "arq.*",
+
     "prometheus_client.*",
     "sentry_sdk.*",
 ]

@@ -56,7 +56,7 @@
    □ 首屏分块渲染
    □ 列表分页加载
    异步红线
-   □ async 路由中不得出现同步库调用（requests / time.sleep / 同步 Pillow），必须 httpx.AsyncClient / arq
+   □ async 路由中不得出现同步阻塞调用（requests / time.sleep / 同步 Pillow）；外部 HTTP 调用使用 httpx.AsyncClient；仅在确有耗时后台任务需求时引入队列
    三、测试要求
    后端（pytest）
    □ 每个 wxapi 接口至少一条正常路径 + 异常分支测试

@@ -1,9 +1,8 @@
 import json
 import os
 import secrets
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import quote_plus
 
-from arq.connections import RedisSettings
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -135,12 +134,6 @@ class Settings(BaseSettings):
     UPLOAD_URL_PREFIX: str = os.getenv("UPLOAD_URL_PREFIX", "/uploads")
     MAX_IMAGE_SIZE: int = int(os.getenv("MAX_IMAGE_SIZE", str(10 * 1024 * 1024)))
 
-    # arq 任务队列
-    ARQ_REDIS_DB: int = int(os.getenv("ARQ_REDIS_DB", "1"))
-    ARQ_QUEUE_NAME: str = os.getenv("ARQ_QUEUE_NAME", "arq:queue")
-    ARQ_MAX_JOBS: int = int(os.getenv("ARQ_MAX_JOBS", "10"))
-    ARQ_JOB_TIMEOUT: int = int(os.getenv("ARQ_JOB_TIMEOUT", "300"))
-    ARQ_KEEP_RESULT: int = int(os.getenv("ARQ_KEEP_RESULT", "3600"))
 
     @property
     def METRICS_ALLOWED_NETWORKS(self) -> list:
@@ -157,16 +150,6 @@ class Settings(BaseSettings):
                 continue
         return nets
 
-    @property
-    def ARQ_REDIS_SETTINGS(self) -> RedisSettings:
-        """从 REDIS_URL 派生 arq RedisSettings，仅替换 db。"""
-        u = urlparse(self.REDIS_URL)
-        return RedisSettings(
-            host=u.hostname or "localhost",
-            port=u.port or 6379,
-            password=u.password,
-            database=self.ARQ_REDIS_DB,
-        )
 
     @field_validator("COMPANY_ROLE_MAPPING", mode="before")
     @classmethod

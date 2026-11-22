@@ -10,7 +10,7 @@ from .depts import depts_router
 from .files import files_router
 from .menus import menus_router
 from .roles import roles_router
-from .tasks import tasks_router
+
 from .users import users_router
 from .wxapi import wxapi_router
 
@@ -33,7 +33,5 @@ v1_router.include_router(files_router, prefix="/files", dependencies=[DependPerm
 # 走 DependPermisson：superuser 全放行；普通用户由 init_apis 启动同步的
 # Api 表 + 角色绑定控制（与 users/depts 等基座模块一致）。
 v1_router.include_router(admin_router, prefix="/admin", dependencies=[DependPermisson])
-# 任务查询路由：使用基础鉴权 + 路由内 superuser 校验，绕过 RBAC API 列表（避免每次新增任务都要刷 API）
-v1_router.include_router(tasks_router, prefix="/tasks", dependencies=[DependAuth])
 
 __all__ = ["v1_router"]

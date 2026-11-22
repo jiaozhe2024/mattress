@@ -29,7 +29,6 @@ try:
 except ImportError as e:
     raise SettingNotFound("Can not import settings") from e
 
-from tasks.queue import close_arq_pool, init_arq_pool
 from utils.cache import cache_manager
 
 
@@ -60,12 +59,10 @@ _init_sentry()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await cache_manager.connect()
-    await init_arq_pool()
     await init_data()
     try:
         yield
     finally:
-        await close_arq_pool()
         await cache_manager.disconnect()
         await close_db()
 

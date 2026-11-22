@@ -15,9 +15,8 @@ mattress-ux/
 │   ├── src/services/       # 业务逻辑层
 │   ├── src/repositories/   # 数据访问层（搜索封装在此）
 │   ├── src/models/         # SQLModel 模型（基座表 + 业务 gin_*）
-│   ├── src/worker/         # arq 异步任务（海报生成等）
 │   ├── admin/              # Vue3 + Element Plus + Vite 管理后台（CC 生成，不套模板）
-│   └── docker-compose.yml  # mysql8 + redis + api + worker
+│   └── docker-compose.yml  # mysql8 + redis + api + admin
 ├── scripts/e2e/            # miniprogram-automator 验收脚本（每页面一个）
 ├── docs/                   # 知识库（规格权威源 = 仓库根 aaa.md）
 └── tasks.json              # 唯一任务队列
@@ -29,12 +28,12 @@ mattress-ux/
 3. wx_user 与后台用户表是两套独立用户体系，禁止在 wxapi 中操作后台用户表，反之亦然。
 4. 搜索一律走 Repository 层封装（先用 FULLTEXT/LIKE），禁止在路由/服务层裸写 LIKE 拼接。
 5. UI 层不直接读写数据库；一切数据经 /wxapi 接口。选品/方案状态只经 Pinia store 流转。
-6. async 路由严禁同步阻塞调用（requests/time.sleep/同步 Pillow）；外部调用用 httpx.AsyncClient，耗时任务（海报生成）入 arq 队列。
+6. async 路由严禁同步阻塞调用（requests/time.sleep/同步 Pillow）；外部调用用 httpx.AsyncClient。当前没有需要后台执行的耗时任务，新增此类需求时再评估引入任务队列。
 
 ## 核心数据流（V2.0）
 1. 产品浏览：wxapi /products（分页/分类/关键词/排序）→ gin_product/gin_product_category → 小程序列表页/详情页
 2. 方案创建：导购勾选产品（Pinia useSelectionStore）→ 方案编辑页 → POST /wxapi/schemes → 创建方案主记录 + 每产品快照 JSON（gin_scheme_product）→ 方案列表/预览页
-3. 方案分享：预览页分享 → 小程序卡片 path=`/pages/scheme/preview?id={scheme_id}` → 好友点击 → GET /wxapi/schemes/{id}/public（免登录只读回显）→ 分享计数 POST /wxapi/schemes/{id}/share；长图海报由 arq worker 异步生成
+3. 方案分享：预览页分享 → 小程序卡片 path=`/pages/scheme/preview?id={scheme_id}` → 好友点击 → GET /wxapi/schemes/{id}/public（免登录只读回显）→ 分享计数 POST /wxapi/schemes/{id}/share；长图海报首版由小程序端生成或暂不提供服务端生成
 4. 登录：wx.login → code → /wxapi/auth/login（dev mock code2session）→ 查/建 wx_user → 签发 JWT（wxapi 专用，与 admin JWT 隔离）
 
 ## 待补充

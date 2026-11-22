@@ -5,10 +5,10 @@
 | 选型 | 原因 | 替代方案 | 注意事项 |
 |------|------|---------|---------|
 | 小程序 C端：Uni-app + Vue3 + TS + Pinia | 一套代码编译到微信小程序；Vue3+TS 与 AI 生成代码契合；Pinia 支撑「多清单选品」核心逻辑；参考 小兔鲜儿 (uniapp-shop-vue3-ts) 的请求封装/商品卡片 | 微信原生 + Vant Weapp（aaa.md 早期稿案，弃：无 Pinia，多清单状态管理弱） | 选品状态必须 Pinia（useSelectionStore），严禁 uni.setStorageSync/全局变量跨页传选品数据；商用前查 小兔鲜儿 License（仅 MIT/Apache-2.0 可复制） |
-| 后端：FastAPI + SQLModel + MySQL8 + Redis | SQLModel 与 Pydantic/FastAPI 同源，Schema 单一来源；MySQL8 FULLTEXT ngram 够用；Redis 承载 token/缓存/arq | Tortoise ORM + PostgreSQL（FastAPI-Template 官方栈，不采用）；RuoYi-FastAPI（旧案，弃） | 参考基座 JiayuXu0/FastAPI-Template（MIT）：只复用 Router→Service→Repository 分层、RBAC、JWT、arq 设计与代码，ORM 层按定稿自建 SQLModel + MySQL8（asyncmy 驱动）；业务表 gin_ 前缀隔离 |
+| 后端：FastAPI + SQLModel + MySQL8 + Redis | SQLModel 与 Pydantic/FastAPI 同源，Schema 单一来源；MySQL8 FULLTEXT ngram 够用；Redis 承载 token/缓存 | Tortoise ORM + PostgreSQL（FastAPI-Template 官方栈，不采用）；RuoYi-FastAPI（旧案，弃） | 参考基座 JiayuXu0/FastAPI-Template（MIT）：复用 Router→Service→Repository 分层、RBAC、JWT；首版不引入任务队列，出现海报生成等真实异步需求后再单独评估；ORM 层按定稿自建 SQLModel + MySQL8（asyncmy 驱动）；业务表 gin_ 前缀隔离 |
 | 管理后台 B端：Vue3 + Element Plus + Vite（不套模板，CC 生成） | 基于后端 Swagger/Schema 直接生成 CRUD，代码风格 100% 统一 | 无 | 图片上传阿里云 OSS、富文本 wangEditor；el-table/el-dialog 为基础组件 |
 | MySQL 8（FULLTEXT ngram） | 初期数据量小，LIKE/FULLTEXT 足够；避免过早引入 ES 运维成本 | Elasticsearch（>10 万行再评估） | ngram 中文分词需建表时配置 parser |
-| Redis + arq 异步队列 | token/缓存顺手复用；海报生成等耗时任务必须异步，避免阻塞 async 路由 | 无 | async 路由禁同步库（requests/time.sleep/同步 Pillow），外部调用一律 httpx.AsyncClient |
+
 | 单 FastAPI 服务双路由（/wxapi + /api/v1 admin） | 一套部署、一套模型，运维成本最低 | 拆两个服务（流量增长后再拆） | 鉴权必须区分：admin JWT vs wxapi JWT |
 | 微信原生能力（scene 分享、code2session） | 官方链路，无第三方依赖 | 第三方登录 SDK（不必要） | 方案分享 path=preview?id=方案ID；真实 wx API 在 dev 必须 mock |
 
