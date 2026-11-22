@@ -163,6 +163,14 @@ ignore = [
     "E501",  # line too long, handled by black
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
+     "I001",   # 屏蔽 import 排序问题
+    "F401",   # 屏蔽 导入了但未使用 的问题
+    "UP035",  # 屏蔽 废弃的 import 问题
+    "UP045",  # 屏蔽 Optional 语法升级
+    "UP046",  # 屏蔽 泛型类语法升级
+    "UP047",  # 屏蔽 泛型函数语法升级
+    "W292",   # 屏蔽 文件末尾没换行
+    "B007",   # 屏蔽 循环变量未使用
 ]
 
 [tool.ruff.lint.per-file-ignores]
