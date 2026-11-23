@@ -124,7 +124,7 @@ jobs:
           ignore_host_key: true
           envs: IMAGE_PREFIX,IMAGE_TAG,DEPLOY_PATH
           script_stop: true
-          command_timeout: 5m
+          command_timeout: 15m
           script: |
             set -eu
             cd "$DEPLOY_PATH"
