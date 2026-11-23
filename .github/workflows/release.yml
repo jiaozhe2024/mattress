@@ -127,7 +127,7 @@ jobs:
           ignore_host_key: true
           envs: IMAGE_PREFIX,IMAGE_TAG,DEPLOY_PATH
           script_stop: true
-          timeout: 300   # 增加这一行，单位秒，总执行超时5分钟
+          command_timeout: 5m  # ✅ 这里！控制远端脚本总时长，单位 s / m
           script: |
             set -eu
             cd "$DEPLOY_PATH"
