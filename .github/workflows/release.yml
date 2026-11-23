@@ -27,7 +27,8 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
     outputs:
-      image_prefix: ${{ steps.image.outputs.prefix }} # 输出给 deploy job
+      image_prefix: ${{ steps.image.outputs.prefix }}
+      head_sha: ${{ github.event.workflow_run.head_sha }}
     steps:
       - name: Checkout tested revision
         uses: actions/checkout@v4
@@ -100,17 +101,49 @@ jobs:
             echo 'Use the SHA tags for deployment.'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  deploy:
-    name: Deploy to ECS
+  pull-images:
+    name: Pull images on server
     needs: publish
     if: ${{ needs.publish.result == 'success' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
     env:
-      # ✅ 直接从上游job拿已经转好小写的prefix，不再做任何转换
       IMAGE_PREFIX: ${{ needs.publish.outputs.image_prefix }}
-      IMAGE_TAG: sha-${{ github.event.workflow_run.head_sha }}
+      IMAGE_TAG: sha-${{ needs.publish.outputs.head_sha }}
+      DEPLOY_PATH: /opt/projects/mattress-ux
+    steps:
+      - name: Pull images over SSH
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+        with:
+          host: ${{ secrets.ECS_HOST }}
+          username: ${{ secrets.ECS_USER }}
+          key: ${{ secrets.ECS_SSH_PRIVATE_KEY }}
+          ignore_host_key: true
+          envs: IMAGE_PREFIX,IMAGE_TAG,DEPLOY_PATH
+          script_stop: true
+          command_timeout: 5m
+          script: |
+            set -eu
+            cd "$DEPLOY_PATH"
+            test -f docker-compose.yml
+            test -f .env
+            docker compose config --quiet
+            echo "=== Start pulling admin & web ==="
+            docker compose pull admin web
+            echo "=== Pull finished ==="
+            docker images | grep -E '(backend-web|backend-admin)'
+
+  deploy:
+    name: Deploy to ECS
+    needs: pull-images
+    if: ${{ needs.pull-images.result == 'success' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE_PREFIX: ${{ needs.publish.outputs.image_prefix }}
+      IMAGE_TAG: sha-${{ needs.publish.outputs.head_sha }}
       DEPLOY_PATH: /opt/projects/mattress-ux
     steps:
       - name: Deploy over SSH
@@ -123,20 +156,16 @@ jobs:
           host: ${{ secrets.ECS_HOST }}
           username: ${{ secrets.ECS_USER }}
           key: ${{ secrets.ECS_SSH_PRIVATE_KEY }}
-          # fingerprint: ${{ secrets.ECS_SSH_FINGERPRINT }}
           ignore_host_key: true
           envs: IMAGE_PREFIX,IMAGE_TAG,DEPLOY_PATH
           script_stop: true
-          command_timeout: 5m  # ✅ 这里！控制远端脚本总时长，单位 s / m
+          command_timeout: 5m
           script: |
             set -eu
             cd "$DEPLOY_PATH"
-            test -f docker-compose.yml
-            test -f .env
-            docker compose config --quiet
-            docker compose pull admin web
+            echo "=== Start up containers ==="
             docker compose up -d --no-build admin web
-
+            echo "=== Waiting for health check ==="
             for attempt in $(seq 1 12); do
               if curl --fail --silent --show-error http://127.0.0.1:18080/api/v1/base/health >/dev/null; then
                 docker compose ps admin web
