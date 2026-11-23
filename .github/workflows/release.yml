@@ -1,99 +1,144 @@
-name: Publish images
+name: Publish images # 工作流名称，显示在 GitHub Actions 页面
 
-on:
-  workflow_run:
-    workflows:
-      - CI
-    types:
-      - completed
-    branches:
-      - main
+on: # 定义工作流触发条件
+  workflow_run: # 由另一个 GitHub Actions 工作流运行结果触发
+    workflows: # 指定作为触发源的工作流
+      - CI # CI 工作流结束后触发
+    types: # 指定关注的触发事件类型
+      - completed # CI 无论成功或失败，完成时都会触发；下方 job 再判断结果
+    branches: # 限定触发源工作流所在分支
+      - main # 只处理 main 分支上的 CI 运行
 
-permissions:
-  contents: read
-  packages: write
-  actions: write
+permissions: # 为本工作流的 GITHUB_TOKEN 设置最小所需权限
+  contents: read # 允许读取仓库内容，以便 checkout 源码
+  packages: write # 允许向 GitHub Container Registry 推送镜像
+  actions: write # 允许对 GitHub Actions 资源执行写操作
 
-concurrency:
-  group: publish-main
-  cancel-in-progress: false
+concurrency: # 控制同组工作流运行的并发行为
+  group: publish-main # 将本工作流的 main 发布任务归入同一个并发组
+  cancel-in-progress: false # 新任务不会取消正在进行的发布任务
 
-env:
-  REGISTRY: ghcr.io
+env: # 定义工作流内各 job/step 可使用的环境变量
+  REGISTRY: ghcr.io # GitHub Container Registry 的域名
 
-jobs:
-  publish:
-    name: Publish GHCR images
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout tested revision
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+jobs: # 声明工作流中的任务
+  publish: # 发布容器镜像的 job ID
+    name: Publish GHCR images # 在 Actions 页面显示的任务名称
+    if: ${{ github.event.workflow_run.conclusion == 'success' }} # 仅在触发它的 CI 成功后发布
+    runs-on: ubuntu-24.04 # 使用 GitHub 托管的 Ubuntu 24.04 runner
+    steps: # 按顺序执行以下步骤
+      - name: Checkout tested revision # 检出已经通过 CI 测试的提交
+        uses: actions/checkout@v4 # 使用官方 checkout action
+        with: # 配置 checkout action 的参数
+          ref: ${{ github.event.workflow_run.head_sha }} # 精确检出触发 CI 的提交，避免构建其他版本
 
-      - name: Normalize image prefix
-        id: image
-        env:
-          REPOSITORY: ${{ github.repository }}
-        run: echo "prefix=${REGISTRY}/$(printf '%s' "$REPOSITORY" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+      - name: Normalize image prefix # 生成符合 GHCR 要求的镜像名前缀
+        id: image # 为此步骤设置 ID，供后续步骤读取输出
+        env: # 设置本步骤专用环境变量
+          REPOSITORY: ${{ github.repository }} # 当前仓库名，格式为 owner/repository
+        run: echo "prefix=${REGISTRY}/$(printf '%s' "$REPOSITORY" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT" # 将仓库名转小写并写入步骤输出
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR # 登录 GitHub Container Registry
+        uses: docker/login-action@v3 # 使用 Docker 官方登录 action
+        with: # 配置登录凭证
+          registry: ${{ env.REGISTRY }} # 登录的镜像仓库地址
+          username: ${{ github.actor }} # 使用触发工作流的 GitHub 用户名
+          password: ${{ secrets.GITHUB_TOKEN }} # 使用 GitHub 自动提供的短期令牌
 
-      - name: Build and push backend image
-        id: backend-image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ steps.image.outputs.prefix }}/backend-web:sha-${{ github.event.workflow_run.head_sha }}
-          labels: |
-            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
-          cache-from: type=gha,scope=backend-web
-          cache-to: type=gha,mode=max,scope=backend-web
+      - name: Set up Docker 构建器 # 初始化 Docker 镜像构建环境
+        # cspell:ignore Buildx
+        uses: docker/setup-buildx-action@v3 # 使用 Docker 官方构建环境配置 action，支持高级构建和缓存
 
-      - name: Build and push admin image
-        id: admin-image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend/admin
-          file: ./backend/admin/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ steps.image.outputs.prefix }}/backend-admin:sha-${{ github.event.workflow_run.head_sha }}
-          labels: |
-            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
-          cache-from: type=gha,scope=backend-admin
-          cache-to: type=gha,mode=max,scope=backend-admin
+      - name: Build and push backend image # 构建并推送后端 API 镜像
+        id: backend-image # 设置步骤 ID，以便后面读取构建输出的镜像摘要
+        uses: docker/build-push-action@v6 # 使用 Docker 官方构建并推送 action
+        with: # 配置后端镜像构建参数
+          context: ./backend # 后端镜像的构建上下文目录
+          file: ./backend/Dockerfile # 指定后端 Dockerfile 路径
+          platforms: linux/amd64 # 构建适用于 linux/amd64 的镜像
+          push: true # 构建成功后推送到 GHCR
+          tags: | # 设置镜像标签
+            ${{ steps.image.outputs.prefix }}/backend-web:sha-${{ github.event.workflow_run.head_sha }} # 使用提交 SHA 标记镜像，便于部署精确版本
+          labels: | # 为镜像写入 OCI 元数据标签
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }} # 记录构建镜像对应的 Git 提交
+          cache-from: type=gha,scope=backend-web # 从 GitHub Actions 缓存读取后端构建缓存
+          cache-to: type=gha,mode=max,scope=backend-web # 将最大范围的后端构建缓存保存到 GitHub Actions
 
-      - name: Publish image references and digests
-        env:
-          IMAGE_PREFIX: ${{ steps.image.outputs.prefix }}
-          REVISION: ${{ github.event.workflow_run.head_sha }}
-          BACKEND_DIGEST: ${{ steps.backend-image.outputs.digest }}
-          ADMIN_DIGEST: ${{ steps.admin-image.outputs.digest }}
-        run: |
+      - name: Build and push admin image # 构建并推送管理后台镜像
+        id: admin-image # 设置步骤 ID，以便后面读取构建输出的镜像摘要
+        uses: docker/build-push-action@v6 # 使用 Docker 官方构建并推送 action
+        with: # 配置管理后台镜像构建参数
+          context: ./backend/admin # 管理后台镜像的构建上下文目录
+          file: ./backend/admin/Dockerfile # 指定管理后台 Dockerfile 路径
+          platforms: linux/amd64 # 构建适用于 linux/amd64 的镜像
+          push: true # 构建成功后推送到 GHCR
+          tags: | # 设置镜像标签
+            ${{ steps.image.outputs.prefix }}/backend-admin:sha-${{ github.event.workflow_run.head_sha }} # 使用提交 SHA 标记镜像，便于部署精确版本
+          labels: | # 为镜像写入 OCI 元数据标签
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }} # 记录构建镜像对应的 Git 提交
+          cache-from: type=gha,scope=backend-admin # 从 GitHub Actions 缓存读取管理后台构建缓存
+          cache-to: type=gha,mode=max,scope=backend-admin # 将最大范围的管理后台构建缓存保存到 GitHub Actions
+
+      - name: Publish image references and digests # 将镜像引用和内容摘要写入运行摘要
+        env: # 设置本步骤使用的环境变量
+          IMAGE_PREFIX: ${{ steps.image.outputs.prefix }} # 镜像仓库前缀
+          REVISION: ${{ github.event.workflow_run.head_sha }} # 触发 CI 的提交 SHA
+          BACKEND_DIGEST: ${{ steps.backend-image.outputs.digest }} # 后端镜像构建后生成的不可变摘要
+          ADMIN_DIGEST: ${{ steps.admin-image.outputs.digest }} # 管理后台镜像构建后生成的不可变摘要
+        run: | # 生成 Markdown 内容并追加到本次工作流运行摘要
           {
-            echo '## Published images'
-            echo
-            echo "Revision: \\`${REVISION}\\`"
-            echo
-            echo "- \\`${IMAGE_PREFIX}/backend-web:sha-${REVISION}\\`"
-            echo "  Digest: \\`${BACKEND_DIGEST}\\`"
-            echo "- \\`${IMAGE_PREFIX}/backend-admin:sha-${REVISION}\\`"
-            echo "  Digest: \\`${ADMIN_DIGEST}\\`"
-            echo
-            echo 'Use the SHA tags for deployment.'
-          } >> "$GITHUB_STEP_SUMMARY"
+            echo '## Published images' # 添加摘要标题
+            echo # 插入空行
+            echo "Revision: \\`${REVISION}\\`" # 显示对应的 Git 提交 SHA
+            echo # 插入空行
+            echo "- \\`${IMAGE_PREFIX}/backend-web:sha-${REVISION}\\`" # 显示后端镜像标签
+            echo "  Digest: \\`${BACKEND_DIGEST}\\`" # 显示后端镜像摘要
+            echo "- \\`${IMAGE_PREFIX}/backend-admin:sha-${REVISION}\\`" # 显示管理后台镜像标签
+            echo "  Digest: \\`${ADMIN_DIGEST}\\`" # 显示管理后台镜像摘要
+            echo # 插入空行
+            echo 'Use the SHA tags for deployment.' # 提示部署时使用带提交 SHA 的镜像标签
+          } >> "$GITHUB_STEP_SUMMARY" # 追加到 GitHub Actions 的运行摘要
+
+  deploy:
+    name: Deploy to ECS
+    needs: publish
+    if: ${{ needs.publish.result == 'success' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+      IMAGE_TAG: sha-${{ github.event.workflow_run.head_sha }}
+      DEPLOY_PATH: /opt/projects/mattress-ux
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+        with:
+          host: ${{ secrets.ECS_HOST }}
+          username: ${{ secrets.ECS_USER }}
+          key: ${{ secrets.ECS_SSH_PRIVATE_KEY }}
+          fingerprint: ${{ secrets.ECS_SSH_FINGERPRINT }}
+          envs: IMAGE_PREFIX,IMAGE_TAG,DEPLOY_PATH
+          script_stop: true
+          script: |
+            set -eu
+            cd "$DEPLOY_PATH"
+            test -f docker-compose.yml
+            test -f .env
+            docker compose config --quiet
+            docker compose pull admin web
+            docker compose up -d --no-build admin web
+            for attempt in $(seq 1 12); do
+              if curl --fail --silent --show-error http://127.0.0.1:18080/api/v1/base/health >/dev/null; then
+                docker compose ps admin web
+                exit 0
+              fi
+              sleep 5
+            done
+            docker compose ps -a
+            docker compose logs --tail=100 admin web
+            exit 1
