@@ -106,7 +106,8 @@ jobs:
     permissions:
       contents: read
     env:
-      IMAGE_PREFIX: ${{ steps.image.outputs.prefix }} # 这里会自动小写，和构建保持一致
+      # 修复：直接管道转小写，不再读取 publish job 的 steps.image
+      IMAGE_PREFIX: ghcr.io/${{ github.repository | lower }}
       IMAGE_TAG: sha-${{ github.event.workflow_run.head_sha }}
       DEPLOY_PATH: /opt/projects/mattress-ux
     steps:
