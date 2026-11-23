@@ -123,7 +123,8 @@ jobs:
           host: ${{ secrets.ECS_HOST }}
           username: ${{ secrets.ECS_USER }}
           key: ${{ secrets.ECS_SSH_PRIVATE_KEY }}
-          fingerprint: ${{ secrets.ECS_SSH_FINGERPRINT }}
+          # fingerprint: ${{ secrets.ECS_SSH_FINGERPRINT }}
+          ignore_host_key: true
           envs: IMAGE_PREFIX,IMAGE_TAG,DEPLOY_PATH
           script_stop: true
           script: |
