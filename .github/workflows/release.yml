@@ -106,8 +106,8 @@ jobs:
     permissions:
       contents: read
     env:
-      # 修复：直接管道转小写，不再读取 publish job 的 steps.image
-      IMAGE_PREFIX: ghcr.io/${{ github.repository | lower }}
+      # ✅ 修复点：把 | lower 改成 lower() 函数
+      IMAGE_PREFIX: ghcr.io/${{ lower(github.repository) }}
       IMAGE_TAG: sha-${{ github.event.workflow_run.head_sha }}
       DEPLOY_PATH: /opt/projects/mattress-ux
     steps:
@@ -132,7 +132,7 @@ jobs:
             docker compose config --quiet
             docker compose pull admin web
             docker compose up -d --no-build admin web
-            # 健康检查 12次，每次间隔5秒，总共60s超时
+
             for attempt in $(seq 1 12); do
               if curl --fail --silent --show-error http://127.0.0.1:18080/api/v1/base/health >/dev/null; then
                 docker compose ps admin web
