@@ -26,6 +26,8 @@ jobs:
     name: Publish GHCR images
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
+    outputs:
+      image_prefix: ${{ steps.image.outputs.prefix }} # 输出给 deploy job
     steps:
       - name: Checkout tested revision
         uses: actions/checkout@v4
@@ -106,8 +108,8 @@ jobs:
     permissions:
       contents: read
     env:
-      # ✅ 修复点：把 | lower 改成 lower() 函数
-      IMAGE_PREFIX: ghcr.io/${{ lower(github.repository) }}
+      # ✅ 直接从上游job拿已经转好小写的prefix，不再做任何转换
+      IMAGE_PREFIX: ${{ needs.publish.outputs.image_prefix }}
       IMAGE_TAG: sha-${{ github.event.workflow_run.head_sha }}
       DEPLOY_PATH: /opt/projects/mattress-ux
     steps:
